@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "tool": "nx-collect",
+    "tool_version": "2.1.0",
+    "generated_at": "2026-03-10T08:10:00Z",
+    "timezone": "Europe/Moscow",
+    "scanned_providers": 6,
+    "scanned_files": 812
+  },
+  "query": {
+    "mode": "latest",
+    "providers": [
+      "codex",
+      "claude",
+      "gemini",
+      "qwen",
+      "pi",
+      "kimi"
+    ],
+    "timezone": "Europe/Moscow",
+    "live_within_minutes": 10,
+    "active_within_minutes": 60,
+    "providers_config_path": "tools/nx-collect/providers.json"
+  },
+  "latest": {
+    "provider": "codex",
+    "path": "/home/pets/.codex/sessions/2026/03/10/rollout-2026-03-10T10-26-39-019cd6a4-043f-7161-bf16-dbd68ac245b8.jsonl",
+    "relative_path": "2026/03/10/rollout-2026-03-10T10-26-39-019cd6a4-043f-7161-bf16-dbd68ac245b8.jsonl",
+    "filename": "rollout-2026-03-10T10-26-39-019cd6a4-043f-7161-bf16-dbd68ac245b8.jsonl",
+    "session_id": "rollout-2026-03-10T10-26-39-019cd6a4-043f-7161-bf16-dbd68ac245b8",
+    "format": "jsonl",
+    "project_hint": "2026",
+    "modified_at": "2026-03-10T08:09:45.690255+00:00",
+    "modified_at_local": "2026-03-10 11:09:45 MSK",
+    "modified_human": "today at 11:09",
+    "age_seconds": 14.0,
+    "age_human": "14 seconds ago",
+    "activity_state": "live",
+    "record_count": 42,
+    "parse_errors": 0,
+    "user_message_count": 3,
+    "started_at": "2026-03-10T07:00:00+00:00",
+    "started_at_local": "2026-03-10 10:00:00 MSK",
+    "duration_seconds": 4185,
+    "duration_human": "1 ч 9 мин",
+    "first_user_message": "Check which CLI finds the latest JSONL session.",
+    "last_user_message": "Build nx-collect with a latest mode.",
+    "intent_evolution": [
+      "check latest jsonl session",
+      "build nx collect latest mode",
+      "show exact file path"
+    ]
+  },
+  "errors": []
+}

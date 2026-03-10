@@ -1,0 +1,242 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "session-collect-result.schema.json",
+  "title": "SessionCollectResult",
+  "version": "2.1.0",
+  "type": "object",
+  "required": [
+    "meta",
+    "query",
+    "latest",
+    "errors"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "tool",
+        "tool_version",
+        "generated_at",
+        "timezone",
+        "scanned_providers",
+        "scanned_files"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string"
+        },
+        "tool_version": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "scanned_providers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scanned_files": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "query": {
+      "type": "object",
+      "required": [
+        "mode",
+        "providers",
+        "timezone",
+        "live_within_minutes",
+        "active_within_minutes",
+        "providers_config_path"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "latest"
+          ]
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "live_within_minutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "active_within_minutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "providers_config_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "latest": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/sessionSummary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "provider",
+          "stage",
+          "detail"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "scan",
+              "parse"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "definitions": {
+    "sessionSummary": {
+      "type": "object",
+      "required": [
+        "provider",
+        "path",
+        "relative_path",
+        "filename",
+        "session_id",
+        "format",
+        "modified_at",
+        "modified_at_local",
+        "modified_human",
+        "age_seconds",
+        "age_human",
+        "activity_state",
+        "user_message_count",
+        "first_user_message",
+        "last_user_message",
+        "intent_evolution"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "relative_path": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json",
+            "jsonl"
+          ]
+        },
+        "project_hint": {
+          "type": "string"
+        },
+        "modified_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified_at_local": {
+          "type": "string"
+        },
+        "modified_human": {
+          "type": "string"
+        },
+        "age_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "age_human": {
+          "type": "string"
+        },
+        "activity_state": {
+          "type": "string",
+          "enum": [
+            "live",
+            "active",
+            "idle"
+          ]
+        },
+        "record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parse_errors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "user_message_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at_local": {
+          "type": "string"
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_human": {
+          "type": "string"
+        },
+        "first_user_message": {
+          "type": "string"
+        },
+        "last_user_message": {
+          "type": "string"
+        },
+        "intent_evolution": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
