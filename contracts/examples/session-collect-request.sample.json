@@ -12,6 +12,7 @@
   },
   "query": {
     "mode": "latest",
+    "project": "/home/pets/temp/sessions_landing",
     "timezone": "Europe/Moscow",
     "live_within_minutes": 10,
     "active_within_minutes": 60,

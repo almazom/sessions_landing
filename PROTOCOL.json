@@ -27,7 +27,7 @@
   "contracts": {
     "session-collect-request": {
       "file": "contracts/session-collect-request.schema.json",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "produced_by": [],
       "consumed_by": [
         "nx-collect"
@@ -36,7 +36,7 @@
     },
     "session-collect-result": {
       "file": "contracts/session-collect-result.schema.json",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "produced_by": [
         "nx-collect"
       ],
@@ -63,7 +63,7 @@
     },
     "intent-extract-request": {
       "file": "contracts/intent-extract-request.schema.json",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "produced_by": [],
       "consumed_by": [
         "extract-intent"
@@ -72,7 +72,7 @@
     },
     "intent-extract-result": {
       "file": "contracts/intent-extract-result.schema.json",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "produced_by": [
         "extract-intent"
       ],
@@ -84,8 +84,8 @@
     "nx-collect": {
       "manifest": "tools/nx-collect/MANIFEST.json",
       "position": 1,
-      "input_contract": "session-collect-request@2.2.0",
-      "output_contract": "session-collect-result@2.2.0",
+      "input_contract": "session-collect-request@2.3.0",
+      "output_contract": "session-collect-result@2.3.0",
       "description": "Collect canonical session files across providers and return one global latest result",
       "stateless": true
     },
@@ -100,8 +100,8 @@
     "extract-intent": {
       "manifest": "tools/extract-intent/MANIFEST.json",
       "position": 3,
-      "input_contract": "intent-extract-request@1.0.0",
-      "output_contract": "intent-extract-result@1.0.0",
+      "input_contract": "intent-extract-request@1.1.0",
+      "output_contract": "intent-extract-result@1.1.0",
       "description": "Dedicated user-facing CLI for 3-7 semantic Russian intent steps over one session file",
       "stateless": true
     }

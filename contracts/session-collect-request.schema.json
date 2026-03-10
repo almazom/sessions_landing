@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "session-collect-request.schema.json",
   "title": "SessionCollectRequest",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "object",
   "required": [
     "catalog",
@@ -53,6 +53,10 @@
           ]
         },
         "timezone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project": {
           "type": "string",
           "minLength": 1
         },

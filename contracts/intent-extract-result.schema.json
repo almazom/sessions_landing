@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "intent-extract-result.schema.json",
   "title": "IntentExtractResult",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "object",
   "required": [
     "meta",
@@ -56,16 +56,12 @@
     "source": {
       "type": "object",
       "required": [
-        "path",
         "format",
         "user_message_count",
         "first_user_message",
         "last_user_message"
       ],
       "properties": {
-        "path": {
-          "type": "string"
-        },
         "format": {
           "type": "string",
           "enum": [
