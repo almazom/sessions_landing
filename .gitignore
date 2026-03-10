@@ -63,3 +63,4 @@ tools/nx-cognize/provider-state.local.json
 *.pem
 *.key
 secrets/
+tmp/
