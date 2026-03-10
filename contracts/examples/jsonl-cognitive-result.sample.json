@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "tool": "nx-cognize",
+    "tool_version": "0.2.0",
+    "generated_at": "2026-03-10T10:30:00Z",
+    "prompt_id": "intent-vector-ru",
+    "selected_provider": "local",
+    "provider_order": [
+      "qwen",
+      "gemini",
+      "claude",
+      "pi",
+      "local"
+    ],
+    "available_providers": [
+      "local"
+    ],
+    "provider_state_path": "/home/pets/temp/sessions_landing/tools/nx-cognize/provider-state.local.json",
+    "provider_attempts": [
+      {
+        "provider": "qwen",
+        "ok": false,
+        "stage": "preflight",
+        "detail": "command not found",
+        "duration_ms": 4.2
+      },
+      {
+        "provider": "local",
+        "ok": true,
+        "stage": "local",
+        "detail": "fallback summary generated"
+      }
+    ]
+  },
+  "source": {
+    "path": "/tmp/example.jsonl",
+    "format": "jsonl",
+    "line_count": 42,
+    "record_count": 42,
+    "parse_errors": 0,
+    "user_message_count": 4
+  },
+  "summary": {
+    "title": "Fix session dashboard sorting",
+    "summary": "The session focuses on making active-session detection and card summaries reflect real user activity.",
+    "first_user_message": "Please fix the Today filter and sort sessions by recent changes.",
+    "last_user_message": "Create an isolated CLI with provider fallback for cognitive summaries over JSONL files.",
+    "intent_bullets": [
+      "починить фильтр сегодня",
+      "исправить latest карточку",
+      "усилить latest через cli",
+      "проверить playwright flow",
+      "закрепить contract first"
+    ],
+    "intent_steps_ru": [
+      "починить фильтр сегодня",
+      "исправить latest карточку",
+      "усилить latest через cli",
+      "проверить playwright flow",
+      "закрепить contract first"
+    ],
+    "key_topics": [
+      "sorting",
+      "activity detection",
+      "session cards",
+      "contracts",
+      "provider chain"
+    ],
+    "confidence": 0.78
+  }
+}

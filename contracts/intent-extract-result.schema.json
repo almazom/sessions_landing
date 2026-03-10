@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "intent-extract-result.schema.json",
+  "title": "IntentExtractResult",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "meta",
+    "source",
+    "intent"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "tool",
+        "tool_version",
+        "generated_at",
+        "prompt_id",
+        "selected_provider",
+        "summary_source"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string"
+        },
+        "tool_version": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "prompt_id": {
+          "type": "string"
+        },
+        "selected_provider": {
+          "type": "string"
+        },
+        "summary_source": {
+          "type": "string",
+          "enum": [
+            "ai",
+            "local_fallback"
+          ]
+        },
+        "provider_attempts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "path",
+        "format",
+        "user_message_count",
+        "first_user_message",
+        "last_user_message"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json",
+            "jsonl"
+          ]
+        },
+        "user_message_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "first_user_message": {
+          "type": "string"
+        },
+        "last_user_message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "intent": {
+      "type": "object",
+      "required": [
+        "title",
+        "summary",
+        "steps"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 7,
+          "items": {
+            "type": "string"
+          }
+        },
+        "key_topics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

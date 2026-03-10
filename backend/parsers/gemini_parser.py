@@ -8,8 +8,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 from .base import (
-    SessionParser, SessionSummary, SessionStatus, AgentType,
-    TimelineEvent
+    SessionParser, SessionSummary, SessionStatus, AgentType
 )
 
 
@@ -22,7 +21,7 @@ class GeminiParser(SessionParser):
     def parse_file(self, file_path: Path) -> SessionSummary:
         """Parse a Gemini logs.json file."""
         events = []
-        user_intent = ""
+        user_messages = []
         session_id = ""
         timestamp_start = None
         timestamp_end = None
@@ -48,8 +47,8 @@ class GeminiParser(SessionParser):
             # Extract user message
             if entry_type == "user":
                 message = entry.get("message", "")
-                if isinstance(message, str) and not user_intent:
-                    user_intent = self.extract_user_intent(message)
+                if isinstance(message, str):
+                    self.collect_user_message(user_messages, message)
 
                 events.append({
                     "type": "user_message",
@@ -70,6 +69,7 @@ class GeminiParser(SessionParser):
         status = self._detect_status(events, timestamp_end)
         timeline = self.build_timeline(events)
         cwd = self._extract_cwd(file_path)
+        user_summary = self.build_user_message_summary(user_messages)
 
         return SessionSummary(
             session_id=session_id or file_path.parent.name,
@@ -79,7 +79,12 @@ class GeminiParser(SessionParser):
             timestamp_start=timestamp_start or "",
             timestamp_end=timestamp_end,
             status=status,
-            user_intent=user_intent,
+            user_intent=user_summary["user_intent"],
+            first_user_message=user_summary["first_user_message"],
+            last_user_message=user_summary["last_user_message"],
+            user_messages=user_summary["user_messages"],
+            user_message_count=user_summary["user_message_count"],
+            intent_evolution=user_summary["intent_evolution"],
             timeline=timeline,
             tool_calls=[],
             token_usage={},

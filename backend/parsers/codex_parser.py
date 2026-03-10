@@ -6,10 +6,9 @@ Location: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from .base import (
-    SessionParser, SessionSummary, SessionStatus, AgentType,
-    TimelineEvent
+    SessionParser, SessionSummary, SessionStatus, AgentType
 )
 
 
@@ -23,7 +22,7 @@ class CodexParser(SessionParser):
         """Parse a Codex session JSONL file."""
         events = []
         session_meta = {}
-        user_intent = ""
+        user_messages = []
         tool_calls = []
         files_modified = []
         plan_steps = []
@@ -67,8 +66,7 @@ class CodexParser(SessionParser):
                             for item in content:
                                 if item.get("type") == "input_text":
                                     text = item.get("text", "")
-                                    if text and not user_intent:
-                                        user_intent = self.extract_user_intent(text)
+                                    self.collect_user_message(user_messages, text)
 
                     # Extract function calls (tool usage)
                     elif event_type == "response_item":
@@ -105,8 +103,7 @@ class CodexParser(SessionParser):
                         # Track user messages too
                         elif payload.get("type") == "user_message":
                             msg = payload.get("message", "")
-                            if msg and not user_intent:
-                                user_intent = self.extract_user_intent(msg)
+                            self.collect_user_message(user_messages, msg)
 
                     # Extract plan updates
                     elif event_type == "response_item":
@@ -140,6 +137,7 @@ class CodexParser(SessionParser):
 
         # Build timeline
         timeline = self.build_timeline(events)
+        user_summary = self.build_user_message_summary(user_messages)
 
         return SessionSummary(
             session_id=session_meta.get("id", file_path.stem),
@@ -149,7 +147,12 @@ class CodexParser(SessionParser):
             timestamp_start=timestamp_start or "",
             timestamp_end=timestamp_end,
             status=status,
-            user_intent=user_intent,
+            user_intent=user_summary["user_intent"],
+            first_user_message=user_summary["first_user_message"],
+            last_user_message=user_summary["last_user_message"],
+            user_messages=user_summary["user_messages"],
+            user_message_count=user_summary["user_message_count"],
+            intent_evolution=user_summary["intent_evolution"],
             timeline=timeline,
             tool_calls=list(set(tool_calls)),
             token_usage=token_usage,

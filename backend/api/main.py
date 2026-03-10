@@ -1,43 +1,43 @@
 """Agent Nexus FastAPI Application."""
 
-import os
 from contextlib import asynccontextmanager
-from pathlib import Path
-from typing import Optional
-
-# Load .env file FIRST (before any other imports)
-from dotenv import load_dotenv
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
+from .logging_utils import get_logger, log_event
 from .middleware import SecurityMiddleware
+from .scanner import session_scanner
+from .settings import settings
 
-# Configuration (now loaded from .env)
-NEXUS_DB_PATH = Path(os.getenv("NEXUS_DB_PATH", "~/.nexus/nexus.db")).expanduser()
-NEXUS_PASSWORD = os.getenv("NEXUS_PASSWORD", "")
-NEXUS_PORT = int(os.getenv("NEXUS_PORT", "18888"))
-NEXUS_HOST = os.getenv("NEXUS_HOST", "0.0.0.0")
-NEXUS_IP_WHITELIST = os.getenv("NEXUS_IP_WHITELIST", "").split(",") if os.getenv("NEXUS_IP_WHITELIST") else []
+logger = get_logger("agent_nexus.app")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - startup and shutdown."""
-    # Startup
-    print("🚀 Agent Nexus starting...")
-    print(f"   Database: {NEXUS_DB_PATH}")
+    log_event(
+        logger,
+        "info",
+        "app.starting",
+        db_path=settings.db_path,
+        auth_required=settings.auth_required,
+        password_enabled=bool(settings.password),
+        telegram_mode=settings.telegram_auth_mode or None,
+        public_base_url=settings.public_base_url,
+        backend_port=settings.backend_port,
+    )
 
     # Ensure database directory exists
-    NEXUS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    settings.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    session_count = session_scanner.ensure_loaded()
+    log_event(logger, "info", "app.sessions_warmed", session_count=session_count)
 
     yield
 
-    # Shutdown
-    print("👋 Agent Nexus shutting down...")
+    log_event(logger, "info", "app.stopping")
 
 
 # Create FastAPI app
@@ -72,16 +72,22 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Strict-Transport-Security"] = (
+        f"max-age={settings.hsts_max_age_seconds}; includeSubDomains"
+    )
     response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
 
     # Content Security Policy (with CDN for Swagger UI)
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://oauth.telegram.org https://telegram.org; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "img-src 'self' data: https://fastapi.tiangolo.com; "
-        "connect-src 'self' ws: wss:;"
+        "img-src 'self' data: https://fastapi.tiangolo.com https://oauth.telegram.org https://telegram.org; "
+        "connect-src 'self' ws: wss: https://oauth.telegram.org https://telegram.org; "
+        "frame-src 'self' https://oauth.telegram.org https://telegram.org;"
     )
 
     return response
@@ -107,6 +113,7 @@ async def api_info():
         "version": "0.1.0",
         "endpoints": {
             "sessions": "/api/sessions",
+            "latest_session": "/api/latest-session",
             "metrics": "/api/metrics",
             "websocket": "/ws",
             "docs": "/api/docs",

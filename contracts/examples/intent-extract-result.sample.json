@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "tool": "extract-intent",
+    "tool_version": "1.0.0",
+    "generated_at": "2026-03-10T11:05:00Z",
+    "prompt_id": "intent-vector-ru",
+    "selected_provider": "local",
+    "summary_source": "local_fallback",
+    "provider_attempts": [
+      {
+        "provider": "local",
+        "ok": true,
+        "stage": "local",
+        "detail": "fallback summary generated"
+      }
+    ]
+  },
+  "source": {
+    "path": "/home/pets/.codex/sessions/2026/03/10/rollout-example.jsonl",
+    "format": "jsonl",
+    "user_message_count": 18,
+    "first_user_message": "Починить фильтр Сегодня.",
+    "last_user_message": "Сделать отдельный extract-intent CLI."
+  },
+  "intent": {
+    "title": "Отдельный CLI для intent",
+    "summary": "Семантическая выжимка показывает направление пользовательской сессии.",
+    "steps": [
+      "починить фильтр сегодня",
+      "исправить latest карточку",
+      "показать полный путь",
+      "усилить contract-first cli",
+      "проверить published flow"
+    ],
+    "key_topics": [
+      "latest",
+      "cli",
+      "intent",
+      "playwright"
+    ],
+    "confidence": 0.45
+  }
+}

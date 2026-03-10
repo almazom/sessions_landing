@@ -1,0 +1,21 @@
+{
+  "source": {
+    "path": "/home/pets/.codex/sessions/2026/03/10/rollout-example.jsonl",
+    "format": "jsonl",
+    "max_steps": 5
+  },
+  "provider": {
+    "chain": [
+      "qwen",
+      "gemini",
+      "claude",
+      "pi",
+      "local"
+    ],
+    "preflight_timeout_seconds": 3,
+    "runtime_timeout_seconds": 20
+  },
+  "render": {
+    "pretty": false
+  }
+}

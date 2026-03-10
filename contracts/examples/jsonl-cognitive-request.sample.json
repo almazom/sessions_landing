@@ -1,0 +1,25 @@
+{
+  "source": {
+    "path": "/home/pets/.codex/sessions/2026/03/10/rollout-example.jsonl",
+    "format": "jsonl"
+  },
+  "operation": {
+    "name": "session_summary",
+    "prompt_id": "intent-vector-ru",
+    "max_bullets": 5,
+    "max_words_per_bullet": 5,
+    "include_first_user_message": true,
+    "include_last_user_message": true
+  },
+  "provider": {
+    "chain": [
+      "qwen",
+      "gemini",
+      "claude",
+      "pi",
+      "local"
+    ],
+    "preflight_timeout_seconds": 3,
+    "runtime_timeout_seconds": 20
+  }
+}

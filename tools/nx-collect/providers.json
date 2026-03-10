@@ -1,0 +1,58 @@
+{
+  "default_providers": [
+    "codex",
+    "claude",
+    "gemini",
+    "qwen",
+    "pi",
+    "kimi"
+  ],
+  "providers": {
+    "codex": {
+      "root": "~/.codex/sessions",
+      "include": [
+        "**/rollout-*.jsonl"
+      ],
+      "exclude": []
+    },
+    "claude": {
+      "root": "~/.claude/projects",
+      "include": [
+        "**/*.jsonl"
+      ],
+      "exclude": [
+        "**/subagents/*.jsonl"
+      ]
+    },
+    "gemini": {
+      "root": "~/.gemini/tmp",
+      "include": [
+        "**/chats/session-*.json"
+      ],
+      "exclude": []
+    },
+    "qwen": {
+      "root": "~/.qwen/projects",
+      "include": [
+        "**/chats/*.jsonl"
+      ],
+      "exclude": []
+    },
+    "pi": {
+      "root": "~/.pi/agent/sessions",
+      "include": [
+        "**/*.jsonl"
+      ],
+      "exclude": []
+    },
+    "kimi": {
+      "root": "~/.kimi/sessions",
+      "include": [
+        "**/wire.jsonl"
+      ],
+      "exclude": [
+        "**/context_sub_*.jsonl"
+      ]
+    }
+  }
+}

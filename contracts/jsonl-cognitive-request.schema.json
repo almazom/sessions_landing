@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "jsonl-cognitive-request.schema.json",
+  "title": "JsonlCognitiveRequest",
+  "version": "1.1.0",
+  "type": "object",
+  "required": [
+    "source",
+    "operation",
+    "provider"
+  ],
+  "properties": {
+    "source": {
+      "type": "object",
+      "required": [
+        "path",
+        "format"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "json",
+            "jsonl"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "operation": {
+      "type": "object",
+      "required": [
+        "name",
+        "prompt_id",
+        "max_bullets",
+        "max_words_per_bullet"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": [
+            "session_summary"
+          ]
+        },
+        "prompt_id": {
+          "type": "string",
+          "enum": [
+            "session-summary",
+            "intent-vector-ru"
+          ]
+        },
+        "max_bullets": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 7
+        },
+        "max_words_per_bullet": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 5
+        },
+        "include_first_user_message": {
+          "type": "boolean"
+        },
+        "include_last_user_message": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "provider": {
+      "type": "object",
+      "required": [
+        "chain"
+      ],
+      "properties": {
+        "chain": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "qwen",
+              "gemini",
+              "claude",
+              "pi",
+              "local"
+            ]
+          }
+        },
+        "preflight_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runtime_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

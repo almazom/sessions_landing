@@ -11,7 +11,6 @@ from pathlib import Path
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backend.parsers.base import SessionSummary, SessionStatus, AgentType, TimelineEvent
 from backend.parsers.codex_parser import CodexParser
 from backend.parsers.kimi_parser import KimiParser
 from backend.parsers.qwen_parser import QwenParser
@@ -177,8 +176,6 @@ def test_secret_masking():
     print("Testing Secret Masking")
     print("="*60)
 
-    from backend.summarizer.summarizer import SECRET_PATTERNS
-    import re
 
     test_cases = [
         ("sk-proj-abc123def456ghi789jkl012mno345pqr678", "OpenAI key"),

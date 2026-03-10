@@ -1,14 +1,17 @@
 """Session scanning and management service."""
 
-import json
+import time
+from threading import Lock
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
-import hashlib
+from dataclasses import dataclass
 
+from backend.api.logging_utils import get_logger, log_event
 from backend.parsers import PARSER_REGISTRY
 from backend.parsers.base import SessionStatus
+
+logger = get_logger("agent_nexus.scanner")
 
 
 @dataclass
@@ -81,33 +84,91 @@ class SessionScanner:
     def __init__(self, store: SessionStore):
         self.store = store
         self._scan_errors = []
+        self._scan_lock = Lock()
+        self._loaded_once = False
     
-    def scan_all(self) -> int:
+    def _scan_all_locked(self) -> int:
         """Scan all agent directories. Returns count of sessions found."""
+        self._scan_errors = []
         total = 0
-        
+        started_at = time.perf_counter()
+
+        log_event(logger, "info", "scanner.scan.started", agents=list(self.WATCH_PATHS.keys()))
         for agent_type, path_str in self.WATCH_PATHS.items():
             try:
                 count = self._scan_agent(agent_type, Path(path_str).expanduser())
                 total += count
-                print(f"   📂 {agent_type}: {count} сессий")
             except Exception as e:
                 self._scan_errors.append(f"{agent_type}: {e}")
-                print(f"   ❌ {agent_type}: {e}")
+                log_event(
+                    logger,
+                    "error",
+                    "scanner.agent.failed",
+                    agent_type=agent_type,
+                    watch_path=Path(path_str).expanduser(),
+                    error_type=type(e).__name__,
+                    error_message=str(e),
+                )
+
+        log_event(
+            logger,
+            "info",
+            "scanner.scan.completed",
+            total_sessions=total,
+            errors=len(self._scan_errors),
+            duration_ms=round((time.perf_counter() - started_at) * 1000, 2),
+        )
+        self._loaded_once = True
         
         return total
+
+    def ensure_loaded(self) -> int:
+        """Load sessions once on demand without duplicate concurrent scans."""
+        if self._loaded_once:
+            return self.store.count()
+
+        with self._scan_lock:
+            if self._loaded_once:
+                return self.store.count()
+            return self._scan_all_locked()
+
+    def scan_all(self) -> int:
+        """Force a full scan, even after startup warmup."""
+        with self._scan_lock:
+            return self._scan_all_locked()
+
+    @property
+    def has_loaded_once(self) -> bool:
+        return self._loaded_once
     
     def _scan_agent(self, agent_type: str, base_path: Path) -> int:
         """Scan a single agent's session directory."""
         if not base_path.exists():
+            log_event(
+                logger,
+                "info",
+                "scanner.agent.skipped_missing_path",
+                agent_type=agent_type,
+                watch_path=base_path,
+            )
             return 0
         
         parser_cls = PARSER_REGISTRY.get(agent_type)
         if not parser_cls:
+            log_event(
+                logger,
+                "warning",
+                "scanner.agent.skipped_missing_parser",
+                agent_type=agent_type,
+                watch_path=base_path,
+            )
             return 0
         
         parser = parser_cls()
         count = 0
+        matched_files = 0
+        parse_errors = 0
+        first_error = ""
         
         # Find session files based on agent type
         if agent_type == "codex":
@@ -135,14 +196,28 @@ class SessionScanner:
             for session_file in base_path.glob(pattern):
                 if session_file.name == "memory":
                     continue
+                matched_files += 1
                 try:
                     summary = parser.parse_file(session_file)
                     data = summary.to_dict()
                     self.store.add(summary.session_id, data)
                     count += 1
                 except Exception as e:
-                    # Skip files that fail to parse
-                    pass
+                    parse_errors += 1
+                    if not first_error:
+                        first_error = f"{session_file}: {type(e).__name__}: {e}"
+
+        log_event(
+            logger,
+            "info",
+            "scanner.agent.completed",
+            agent_type=agent_type,
+            watch_path=base_path,
+            matched_files=matched_files,
+            parsed_sessions=count,
+            parse_errors=parse_errors,
+            first_error=first_error or None,
+        )
         
         return count
     

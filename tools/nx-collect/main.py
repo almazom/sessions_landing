@@ -18,11 +18,15 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 TOOL_NAME = "nx-collect"
-TOOL_VERSION = "2.1.0"
+TOOL_VERSION = "2.2.0"
 DEFAULT_LIVE_MINUTES = 10
 DEFAULT_ACTIVE_MINUTES = 60
 DEFAULT_MODE = "latest"
 DEFAULT_TIMEZONE = "Europe/Moscow"
+DEFAULT_COGNIZE_PROMPT_ID = "intent-vector-ru"
+DEFAULT_COGNIZE_PROVIDER_CHAIN = "auto"
+DEFAULT_COGNIZE_PREFLIGHT_TIMEOUT = 3
+DEFAULT_COGNIZE_RUNTIME_TIMEOUT = 20
 TIMESTAMP_KEYS = {
     "created_at",
     "createdAt",
@@ -96,6 +100,28 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=DEFAULT_ACTIVE_MINUTES,
         help="Mark sessions active when updated within this window",
+    )
+    parser.add_argument(
+        "--cognize-prompt-id",
+        default=DEFAULT_COGNIZE_PROMPT_ID,
+        help="Prompt catalog entry to use when generating semantic intent steps",
+    )
+    parser.add_argument(
+        "--cognize-provider-chain",
+        default=DEFAULT_COGNIZE_PROVIDER_CHAIN,
+        help="Provider chain for nx-cognize, e.g. auto or local",
+    )
+    parser.add_argument(
+        "--cognize-preflight-timeout",
+        type=int,
+        default=DEFAULT_COGNIZE_PREFLIGHT_TIMEOUT,
+        help="nx-cognize preflight timeout in seconds",
+    )
+    parser.add_argument(
+        "--cognize-runtime-timeout",
+        type=int,
+        default=DEFAULT_COGNIZE_RUNTIME_TIMEOUT,
+        help="nx-cognize runtime timeout in seconds",
     )
     parser.add_argument("--output", "-o", help="Write result JSON to file instead of stdout")
     parser.add_argument("--version", action="store_true", help="Show version")
@@ -538,11 +564,95 @@ def sort_candidates(candidates: List[Candidate], provider_order: List[str]) -> L
     )
 
 
+def run_cognitive_intent(
+    session_path: Path,
+    base_dir: Path,
+    prompt_id: str,
+    provider_chain: str,
+    preflight_timeout: int,
+    runtime_timeout: int,
+) -> Tuple[Optional[List[str]], Optional[str], Optional[str], Optional[str]]:
+    cognize_path = (base_dir.parent / "nx-cognize" / "nx-cognize").resolve()
+    if not cognize_path.exists():
+        return None, None, None, "nx-cognize wrapper is not available"
+
+    timeout_seconds = max(5, preflight_timeout + runtime_timeout + 5)
+    command = [
+        str(cognize_path),
+        "--input",
+        str(session_path),
+        "--prompt-id",
+        prompt_id,
+        "--provider-chain",
+        provider_chain,
+        "--preflight-timeout",
+        str(preflight_timeout),
+        "--runtime-timeout",
+        str(runtime_timeout),
+        "--max-bullets",
+        "7",
+        "--max-words-per-bullet",
+        "5",
+    ]
+    if provider_chain == "local":
+        command.extend([
+            "--state-file",
+            str(session_path.parent / ".nx-cognize-state.local.json"),
+        ])
+
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        return None, None, None, f"nx-cognize timed out after {timeout_seconds}s"
+    except OSError as exc:
+        return None, None, None, str(exc)
+
+    if completed.returncode != 0:
+        stderr = completed.stderr.strip() or completed.stdout.strip() or f"nx-cognize exited with code {completed.returncode}"
+        return None, None, None, stderr
+
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        return None, None, None, f"nx-cognize returned invalid JSON: {exc}"
+
+    summary = payload.get("summary") or {}
+    meta = payload.get("meta") or {}
+    intent_steps = summary.get("intent_steps_ru") or summary.get("intent_bullets") or []
+    if not isinstance(intent_steps, list):
+        return None, None, None, "nx-cognize result is missing intent steps"
+
+    normalized_steps = [
+        normalize_text(step, 120)
+        for step in intent_steps
+        if normalize_text(step, 120)
+    ]
+    if len(normalized_steps) < 3:
+        return None, None, None, "nx-cognize returned fewer than 3 intent steps"
+
+    selected_provider = str(meta.get("selected_provider") or "")
+    source = "ai"
+    if selected_provider == "local":
+        source = "local_fallback"
+    return normalized_steps[:7], source, selected_provider or None, None
+
+
 def enrich_candidate(
     candidate: Candidate,
+    base_dir: Path,
     tzinfo: timezone | ZoneInfo,
     live_minutes: int,
     active_minutes: int,
+    cognize_prompt_id: str,
+    cognize_provider_chain: str,
+    cognize_preflight_timeout: int,
+    cognize_runtime_timeout: int,
 ) -> Tuple[Dict[str, Any], Optional[str]]:
     modified_at = datetime.fromtimestamp(candidate.modified_epoch, tz=timezone.utc)
     local_dt = modified_at.astimezone(tzinfo)
@@ -568,17 +678,19 @@ def enrich_candidate(
         "first_user_message": "",
         "last_user_message": "",
         "intent_evolution": [],
+        "intent_summary_source": "local_fallback",
+        "intent_summary_provider": "nx-collect",
     }
 
     try:
-        messages, record_count, parse_errors, started_at, intent_evolution = extract_session_messages(candidate.path)
+        messages, record_count, parse_errors, started_at, local_intent_evolution = extract_session_messages(candidate.path)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         return summary, str(exc)
 
     summary["record_count"] = record_count
     summary["parse_errors"] = parse_errors
     summary["user_message_count"] = len(messages)
-    summary["intent_evolution"] = intent_evolution
+    summary["intent_evolution"] = local_intent_evolution
     if messages:
         summary["first_user_message"] = messages[0]
         summary["last_user_message"] = messages[-1]
@@ -588,6 +700,21 @@ def enrich_candidate(
         summary["started_at_local"] = started_at.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M:%S %Z").strip()
         summary["duration_seconds"] = duration_seconds
         summary["duration_human"] = duration_human(duration_seconds)
+    if messages:
+        intent_steps, source, provider_name, cognize_error = run_cognitive_intent(
+            session_path=candidate.path,
+            base_dir=base_dir,
+            prompt_id=cognize_prompt_id,
+            provider_chain=cognize_provider_chain,
+            preflight_timeout=cognize_preflight_timeout,
+            runtime_timeout=cognize_runtime_timeout,
+        )
+        if intent_steps:
+            summary["intent_evolution"] = intent_steps
+            summary["intent_summary_source"] = source or "local_fallback"
+            summary["intent_summary_provider"] = provider_name or "nx-cognize"
+        elif cognize_error:
+            return summary, f"cognize: {cognize_error}"
     return summary, None
 
 
@@ -624,6 +751,9 @@ def main() -> int:
         return 2
     if args.live_within_minutes > args.active_within_minutes:
         emit_error("--live-within-minutes cannot exceed --active-within-minutes")
+        return 2
+    if args.cognize_preflight_timeout < 1 or args.cognize_runtime_timeout < 1:
+        emit_error("cognize timeouts must be positive integers")
         return 2
 
     mode = resolve_mode(args)
@@ -672,16 +802,22 @@ def main() -> int:
             return enriched_cache[cache_key]
         summary, parse_error = enrich_candidate(
             candidate,
+            base_dir=base_dir,
             tzinfo=tzinfo,
             live_minutes=args.live_within_minutes,
             active_minutes=args.active_within_minutes,
+            cognize_prompt_id=args.cognize_prompt_id,
+            cognize_provider_chain=args.cognize_provider_chain,
+            cognize_preflight_timeout=args.cognize_preflight_timeout,
+            cognize_runtime_timeout=args.cognize_runtime_timeout,
         )
         if parse_error:
+            stage = "cognize" if parse_error.startswith("cognize: ") else "parse"
             errors.append(
                 {
                     "provider": candidate.provider,
-                    "stage": "parse",
-                    "detail": f"{candidate.path}: {parse_error}",
+                    "stage": stage,
+                    "detail": f"{candidate.path}: {parse_error.removeprefix('cognize: ')}",
                 }
             )
         enriched_cache[cache_key] = summary
@@ -704,6 +840,8 @@ def main() -> int:
             "timezone": timezone_label,
             "live_within_minutes": args.live_within_minutes,
             "active_within_minutes": args.active_within_minutes,
+            "cognize_prompt_id": args.cognize_prompt_id,
+            "cognize_provider_chain": args.cognize_provider_chain,
             "providers_config_path": str(provider_config_path),
         },
         "latest": latest,

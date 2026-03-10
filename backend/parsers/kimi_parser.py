@@ -8,8 +8,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 from .base import (
-    SessionParser, SessionSummary, SessionStatus, AgentType,
-    TimelineEvent
+    SessionParser, SessionSummary, SessionStatus, AgentType
 )
 
 
@@ -22,7 +21,7 @@ class KimiParser(SessionParser):
     def parse_file(self, file_path: Path) -> SessionSummary:
         """Parse a Kimi context.jsonl file."""
         events = []
-        user_intent = ""
+        user_messages = []
         tool_calls = []
         token_usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
         timestamp_start = None
@@ -54,13 +53,13 @@ class KimiParser(SessionParser):
                         timestamp_start = entry.get("timestamp", "")
 
                     # Extract user intent from first user message
-                    if role == "user" and not user_intent:
+                    if role == "user":
                         if isinstance(content, str):
-                            user_intent = self.extract_user_intent(content)
+                            self.collect_user_message(user_messages, content)
                         elif isinstance(content, list):
                             for item in content:
                                 if isinstance(item, dict) and item.get("type") == "text":
-                                    user_intent = self.extract_user_intent(item.get("text", ""))
+                                    self.collect_user_message(user_messages, item.get("text", ""))
                                     break
 
                     # Extract assistant actions
@@ -99,6 +98,7 @@ class KimiParser(SessionParser):
 
         # Build timeline
         timeline = self.build_timeline(events)
+        user_summary = self.build_user_message_summary(user_messages)
 
         # Extract cwd from path or content
         cwd = self._extract_cwd(file_path)
@@ -111,7 +111,12 @@ class KimiParser(SessionParser):
             timestamp_start=timestamp_start or "",
             timestamp_end=timestamp_end,
             status=status,
-            user_intent=user_intent,
+            user_intent=user_summary["user_intent"],
+            first_user_message=user_summary["first_user_message"],
+            last_user_message=user_summary["last_user_message"],
+            user_messages=user_summary["user_messages"],
+            user_message_count=user_summary["user_message_count"],
+            intent_evolution=user_summary["intent_evolution"],
             timeline=timeline,
             tool_calls=list(set(tool_calls)),
             token_usage=token_usage,

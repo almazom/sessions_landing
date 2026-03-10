@@ -8,8 +8,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 from .base import (
-    SessionParser, SessionSummary, SessionStatus, AgentType,
-    TimelineEvent
+    SessionParser, SessionSummary, SessionStatus, AgentType
 )
 
 
@@ -22,7 +21,7 @@ class QwenParser(SessionParser):
     def parse_file(self, file_path: Path) -> SessionSummary:
         """Parse a Qwen session JSONL file."""
         events = []
-        user_intent = ""
+        user_messages = []
         tool_calls = []
         token_usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
         timestamp_start = None
@@ -57,13 +56,12 @@ class QwenParser(SessionParser):
                     if entry_type == "user":
                         message = entry.get("message", {})
                         content = message.get("content", "")
-                        if isinstance(content, str) and not user_intent:
-                            user_intent = self.extract_user_intent(content)
+                        if isinstance(content, str):
+                            self.collect_user_message(user_messages, content)
                         elif isinstance(content, list):
                             for item in content:
                                 if isinstance(item, dict) and item.get("type") == "text":
-                                    if not user_intent:
-                                        user_intent = self.extract_user_intent(item.get("text", ""))
+                                    self.collect_user_message(user_messages, item.get("text", ""))
                                     break
 
                         events.append({
@@ -139,6 +137,7 @@ class QwenParser(SessionParser):
 
         status = self._detect_status(events, timestamp_end)
         timeline = self.build_timeline(events)
+        user_summary = self.build_user_message_summary(user_messages)
 
         agent_name = f"Qwen ({model})" if model else "Qwen"
 
@@ -150,7 +149,12 @@ class QwenParser(SessionParser):
             timestamp_start=timestamp_start or "",
             timestamp_end=timestamp_end,
             status=status,
-            user_intent=user_intent,
+            user_intent=user_summary["user_intent"],
+            first_user_message=user_summary["first_user_message"],
+            last_user_message=user_summary["last_user_message"],
+            user_messages=user_summary["user_messages"],
+            user_message_count=user_summary["user_message_count"],
+            intent_evolution=user_summary["intent_evolution"],
             timeline=timeline,
             tool_calls=list(set(tool_calls)),
             token_usage=token_usage,

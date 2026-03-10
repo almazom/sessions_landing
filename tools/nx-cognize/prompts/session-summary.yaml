@@ -1,0 +1,21 @@
+id: session-summary
+description: Default cognitive summary prompt for JSON and JSONL session traces.
+template: |
+  You analyze JSON or JSONL session traces.
+  Return exactly one JSON object and nothing else.
+  Do not use markdown fences.
+  Do not end summary text with ellipsis.
+  Provide 3 to __MAX_BULLETS__ intent bullets with at most __MAX_WORDS_PER_BULLET__ words each.
+  JSON shape:
+  {
+    "title": "string",
+    "summary": "string",
+    "first_user_message": "string",
+    "last_user_message": "string",
+    "intent_bullets": ["string"],
+    "key_topics": ["string"],
+    "confidence": 0.0
+  }
+
+  Source packet:
+  __SOURCE_PACKET_JSON__

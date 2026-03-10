@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tools/extract-intent/MANIFEST.json",
+  "title": "extract-intent Tool Manifest",
+  "version": "1.0.0",
+  "identity": {
+    "name": "extract-intent",
+    "description": "Extract 3-7 easy-to-read Russian intent steps from one JSON or JSONL session file",
+    "stateless": true
+  },
+  "contracts": {
+    "input": "intent-extract-request@1.0.0",
+    "output": "intent-extract-result@1.0.0"
+  },
+  "cli": {
+    "usage": "tools/extract-intent/extract-intent --input <FILE> [--pretty]",
+    "flags": [
+      {
+        "name": "--input",
+        "short": "-i",
+        "type": "string",
+        "required": true,
+        "description": "Path to one JSON or JSONL session file"
+      },
+      {
+        "name": "--format",
+        "type": "string",
+        "default": "auto",
+        "description": "Source format: auto, json, jsonl"
+      },
+      {
+        "name": "--max-steps",
+        "type": "integer",
+        "default": 5,
+        "description": "How many intent steps to keep, 3-7"
+      },
+      {
+        "name": "--provider-chain",
+        "type": "string",
+        "default": "auto",
+        "description": "Comma-separated provider order or local"
+      },
+      {
+        "name": "--state-file",
+        "type": "string",
+        "description": "Override nx-cognize provider state cache path"
+      },
+      {
+        "name": "--preflight-timeout",
+        "type": "integer",
+        "default": 3,
+        "description": "nx-cognize preflight timeout in seconds"
+      },
+      {
+        "name": "--runtime-timeout",
+        "type": "integer",
+        "default": 20,
+        "description": "nx-cognize runtime timeout in seconds"
+      },
+      {
+        "name": "--pretty",
+        "type": "boolean",
+        "default": false,
+        "description": "Render a human-friendly terminal view instead of JSON"
+      },
+      {
+        "name": "--output",
+        "short": "-o",
+        "type": "string",
+        "default": "stdout",
+        "description": "Output path for JSON or pretty text"
+      },
+      {
+        "name": "--version",
+        "type": "boolean",
+        "description": "Show tool version"
+      }
+    ],
+    "exit_codes": {
+      "0": "Success",
+      "1": "Internal error",
+      "2": "Invalid arguments or missing input file",
+      "3": "Provider failure",
+      "4": "Contract violation or invalid nested JSON"
+    }
+  },
+  "files": {
+    "required": [
+      "main.py",
+      "extract-intent"
+    ]
+  }
+}

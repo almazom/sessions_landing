@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tools/nx-cognize/MANIFEST.json",
+  "title": "nx-cognize Tool Manifest",
+  "version": "1.1.0",
+  "identity": {
+    "name": "nx-cognize",
+    "description": "Run a cognitive summary operation over JSON or JSONL with provider fallback",
+    "stateless": true
+  },
+  "contracts": {
+    "input": "jsonl-cognitive-request@1.1.0",
+    "output": "jsonl-cognitive-result@1.1.0"
+  },
+  "cli": {
+    "usage": "tools/nx-cognize/nx-cognize --input <FILE> [--prompt-id <ID>] [--output <FILE>] [--provider-chain <CHAIN>] [--max-bullets <N>]",
+    "flags": [
+      {
+        "name": "--input",
+        "short": "-i",
+        "type": "string",
+        "required": true,
+        "description": "Path to JSON or JSONL source file"
+      },
+      {
+        "name": "--output",
+        "short": "-o",
+        "type": "string",
+        "default": "stdout",
+        "description": "Output file path; stdout when omitted"
+      },
+      {
+        "name": "--provider-chain",
+        "type": "string",
+        "default": "auto",
+        "description": "Comma-separated provider order, e.g. qwen,gemini,claude,pi,local"
+      },
+      {
+        "name": "--prompt-id",
+        "type": "string",
+        "default": "session-summary",
+        "description": "Prompt catalog entry, e.g. session-summary or intent-vector-ru"
+      },
+      {
+        "name": "--state-file",
+        "type": "string",
+        "description": "Override provider health cache file path"
+      },
+      {
+        "name": "--refresh-provider-health",
+        "type": "boolean",
+        "default": false,
+        "description": "Force parallel provider preflight refresh before runtime selection"
+      },
+      {
+        "name": "--format",
+        "type": "string",
+        "default": "auto",
+        "description": "Source format: auto, json, jsonl"
+      },
+      {
+        "name": "--max-bullets",
+        "type": "integer",
+        "default": 5,
+        "description": "Intent bullet count, 3-7"
+      },
+      {
+        "name": "--max-words-per-bullet",
+        "type": "integer",
+        "default": 5,
+        "description": "Maximum words per bullet, 3-5"
+      },
+      {
+        "name": "--preflight-timeout",
+        "type": "integer",
+        "default": 45,
+        "description": "Preflight timeout in seconds"
+      },
+      {
+        "name": "--runtime-timeout",
+        "type": "integer",
+        "default": 600,
+        "description": "Provider runtime timeout in seconds"
+      },
+      {
+        "name": "--version",
+        "type": "boolean",
+        "description": "Show tool version"
+      }
+    ],
+    "exit_codes": {
+      "0": "Success",
+      "1": "Internal error",
+      "2": "Invalid arguments or missing input file",
+      "3": "All providers failed",
+      "4": "Input parse failure or output contract violation"
+    }
+  },
+  "files": {
+    "required": [
+      "main.py",
+      "nx-cognize",
+      "providers.json",
+      "prompts/session-summary.yaml",
+      "prompts/intent-vector-ru.yaml"
+    ],
+    "optional": [
+      "provider-state.local.json"
+    ]
+  }
+}

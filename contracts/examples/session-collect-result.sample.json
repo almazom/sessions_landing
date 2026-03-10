@@ -1,7 +1,7 @@
 {
   "meta": {
     "tool": "nx-collect",
-    "tool_version": "2.1.0",
+    "tool_version": "2.2.0",
     "generated_at": "2026-03-10T08:10:00Z",
     "timezone": "Europe/Moscow",
     "scanned_providers": 6,
@@ -20,6 +20,8 @@
     "timezone": "Europe/Moscow",
     "live_within_minutes": 10,
     "active_within_minutes": 60,
+    "cognize_prompt_id": "intent-vector-ru",
+    "cognize_provider_chain": "auto",
     "providers_config_path": "tools/nx-collect/providers.json"
   },
   "latest": {
@@ -46,10 +48,13 @@
     "first_user_message": "Check which CLI finds the latest JSONL session.",
     "last_user_message": "Build nx-collect with a latest mode.",
     "intent_evolution": [
-      "check latest jsonl session",
-      "build nx collect latest mode",
-      "show exact file path"
-    ]
+      "найти latest session файл",
+      "сделать semantic вектор",
+      "показать полный путь",
+      "проверить published flow"
+    ],
+    "intent_summary_source": "ai",
+    "intent_summary_provider": "qwen"
   },
   "errors": []
 }

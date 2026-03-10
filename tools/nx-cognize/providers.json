@@ -1,0 +1,90 @@
+{
+  "default_chain": [
+    "qwen",
+    "gemini",
+    "claude",
+    "pi",
+    "local"
+  ],
+  "health_cache": {
+    "state_file": "provider-state.local.json",
+    "refresh_after_seconds": 300,
+    "prefer_recent_available_seconds": 3600
+  },
+  "providers": {
+    "qwen": {
+      "preflight": [
+        "qwen",
+        "-p",
+        "Ответь одним словом: ok.NOW TOOLS alowed"
+      ],
+      "runtime": [
+        "qwen",
+        "-p",
+        "{prompt}"
+      ]
+    },
+    "gemini": {
+      "preflight": [
+        "gemini",
+        "-p",
+        "Ответь одним словом: ok.NOW TOOLS alowed"
+      ],
+      "runtime": [
+        "gemini",
+        "-p",
+        "{prompt}"
+      ]
+    },
+    "claude": {
+      "preflight": [
+        "claude",
+        "-p",
+        "--model",
+        "MiniMax-M2.5",
+        "--no-session-persistence",
+        "Ответь одним словом: ok.NOW TOOLS alowed"
+      ],
+      "runtime": [
+        "claude",
+        "-p",
+        "--model",
+        "MiniMax-M2.5",
+        "--no-session-persistence",
+        "{prompt}"
+      ]
+    },
+    "pi": {
+      "preflight": [
+        "pi",
+        "--no-session",
+        "--provider",
+        "zai",
+        "--model",
+        "glm-5",
+        "--thinking",
+        "off",
+        "--no-tools",
+        "-p",
+        "Ответь одним словом: ok"
+      ],
+      "runtime": [
+        "pi",
+        "--no-session",
+        "--provider",
+        "zai",
+        "--model",
+        "glm-5",
+        "--thinking",
+        "high",
+        "--no-tools",
+        "-p",
+        "{prompt}"
+      ]
+    },
+    "local": {
+      "preflight": [],
+      "runtime": []
+    }
+  }
+}

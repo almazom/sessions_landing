@@ -319,17 +319,21 @@ class NxCollectTests(unittest.TestCase):
                 str(config_path),
                 "--timezone",
                 "UTC",
+                "--cognize-provider-chain",
+                "local",
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             payload = json.loads(completed.stdout)
             latest = payload["latest"]
             self.assertEqual(latest["started_at"], start_dt.isoformat())
             self.assertEqual(latest["duration_seconds"], 9000)
+            self.assertEqual(latest["intent_summary_provider"], "local")
+            self.assertEqual(latest["intent_summary_source"], "local_fallback")
             self.assertEqual(latest["intent_evolution"], [
                 "починить фильтр сегодня",
                 "исправить latest карточку",
-                "показать полный путь файла",
-                "усилить playwright проверку",
+                "показать полный путь",
+                "проверить published flow",
             ])
 
     def test_latest_omits_duration_when_start_timestamp_is_unknown(self) -> None:
@@ -367,15 +371,20 @@ class NxCollectTests(unittest.TestCase):
                 str(config_path),
                 "--timezone",
                 "UTC",
+                "--cognize-provider-chain",
+                "local",
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             payload = json.loads(completed.stdout)
             latest = payload["latest"]
             self.assertNotIn("started_at", latest)
             self.assertNotIn("duration_seconds", latest)
+            self.assertEqual(latest["intent_summary_provider"], "local")
+            self.assertEqual(latest["intent_summary_source"], "local_fallback")
             self.assertEqual(latest["intent_evolution"], [
-                "сделать latest карточку",
-                "добавить intent bullets",
+                "исправить latest карточку",
+                "улучшить вектор намерений",
+                "сделать latest карточку добавить intent",
             ])
 
 

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "session-collect-result.schema.json",
   "title": "SessionCollectResult",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "object",
   "required": [
     "meta",
@@ -80,6 +80,12 @@
           "type": "integer",
           "minimum": 1
         },
+        "cognize_prompt_id": {
+          "type": "string"
+        },
+        "cognize_provider_chain": {
+          "type": "string"
+        },
         "providers_config_path": {
           "type": "string"
         }
@@ -112,8 +118,9 @@
           "stage": {
             "type": "string",
             "enum": [
-              "scan",
-              "parse"
+            "scan",
+              "parse",
+              "cognize"
             ]
           },
           "detail": {
@@ -143,7 +150,9 @@
         "user_message_count",
         "first_user_message",
         "last_user_message",
-        "intent_evolution"
+        "intent_evolution",
+        "intent_summary_source",
+        "intent_summary_provider"
       ],
       "properties": {
         "provider": {
@@ -233,6 +242,16 @@
           "items": {
             "type": "string"
           }
+        },
+        "intent_summary_source": {
+          "type": "string",
+          "enum": [
+            "ai",
+            "local_fallback"
+          ]
+        },
+        "intent_summary_provider": {
+          "type": "string"
         }
       },
       "additionalProperties": false

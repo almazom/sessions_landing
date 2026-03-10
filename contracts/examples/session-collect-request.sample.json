@@ -1,0 +1,23 @@
+{
+  "catalog": {
+    "providers": [
+      "codex",
+      "claude",
+      "gemini",
+      "qwen",
+      "pi",
+      "kimi"
+    ],
+    "config_path": "tools/nx-collect/providers.json"
+  },
+  "query": {
+    "mode": "latest",
+    "timezone": "Europe/Moscow",
+    "live_within_minutes": 10,
+    "active_within_minutes": 60,
+    "cognize_prompt_id": "intent-vector-ru",
+    "cognize_provider_chain": "auto",
+    "cognize_preflight_timeout_seconds": 3,
+    "cognize_runtime_timeout_seconds": 20
+  }
+}

@@ -8,16 +8,13 @@ Responsibilities:
 - Compress to target size
 """
 
-import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-from datetime import datetime
+from typing import Dict, List, Optional
 
-from ..parsers.base import SessionSummary, SessionStatus, TimelineEvent
+from ..parsers.base import SessionSummary, TimelineEvent
 from ..parsers import (
-    CodexParser, KimiParser, GeminiParser, QwenParser, ClaudeParser,
-    PARSER_REGISTRY
+    CodexParser, KimiParser, GeminiParser, QwenParser, ClaudeParser
 )
 
 

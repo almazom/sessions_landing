@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "intent-extract-request.schema.json",
+  "title": "IntentExtractRequest",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "source",
+    "provider",
+    "render"
+  ],
+  "properties": {
+    "source": {
+      "type": "object",
+      "required": [
+        "path",
+        "format"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "json",
+            "jsonl"
+          ]
+        },
+        "max_steps": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 7
+        }
+      },
+      "additionalProperties": false
+    },
+    "provider": {
+      "type": "object",
+      "required": [
+        "chain"
+      ],
+      "properties": {
+        "chain": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "qwen",
+              "gemini",
+              "claude",
+              "pi",
+              "local"
+            ]
+          }
+        },
+        "state_file": {
+          "type": "string"
+        },
+        "preflight_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runtime_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "render": {
+      "type": "object",
+      "required": [
+        "pretty"
+      ],
+      "properties": {
+        "pretty": {
+          "type": "boolean"
+        },
+        "output_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

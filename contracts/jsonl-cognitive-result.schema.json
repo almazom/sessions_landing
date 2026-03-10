@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "jsonl-cognitive-result.schema.json",
+  "title": "JsonlCognitiveResult",
+  "version": "1.1.0",
+  "type": "object",
+  "required": [
+    "meta",
+    "source",
+    "summary"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "tool",
+        "tool_version",
+        "generated_at",
+        "prompt_id",
+        "selected_provider",
+        "provider_attempts"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string"
+        },
+        "tool_version": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "prompt_id": {
+          "type": "string"
+        },
+        "selected_provider": {
+          "type": "string"
+        },
+        "provider_order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "available_providers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provider_state_path": {
+          "type": "string"
+        },
+        "provider_attempts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "provider",
+              "ok"
+            ],
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean"
+              },
+              "stage": {
+                "type": "string",
+                "enum": [
+                  "preflight",
+                  "runtime",
+                  "local"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              },
+              "duration_ms": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "path",
+        "format",
+        "line_count",
+        "record_count",
+        "parse_errors",
+        "user_message_count"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json",
+            "jsonl"
+          ]
+        },
+        "line_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parse_errors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "user_message_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "title",
+        "summary",
+        "first_user_message",
+        "last_user_message",
+        "intent_bullets",
+        "intent_steps_ru",
+        "key_topics",
+        "confidence"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "first_user_message": {
+          "type": "string"
+        },
+        "last_user_message": {
+          "type": "string"
+        },
+        "intent_bullets": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 7,
+          "items": {
+            "type": "string"
+          }
+        },
+        "intent_steps_ru": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 7,
+          "items": {
+            "type": "string"
+          }
+        },
+        "key_topics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

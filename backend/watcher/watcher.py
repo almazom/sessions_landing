@@ -8,17 +8,16 @@ Monitors:
 - ~/.claude/projects
 """
 
-import os
 import time
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Dict, List, Callable, Optional, Set
+from typing import Dict, List, Callable, Optional
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent, FileCreatedEvent
 import threading
 import queue
 
-from ..parsers import PARSER_REGISTRY, CodexParser, KimiParser, GeminiParser, QwenParser, ClaudeParser
+from ..parsers import CodexParser, KimiParser, GeminiParser, QwenParser, ClaudeParser
 
 
 @dataclass

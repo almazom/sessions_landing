@@ -2,9 +2,9 @@
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional
 
-from .base import SessionParser, SessionSummary, SessionStatus, AgentType, TimelineEvent
+from .base import SessionParser, SessionSummary, SessionStatus, AgentType
 
 
 class PiParser(SessionParser):
@@ -33,7 +33,7 @@ class PiParser(SessionParser):
         session_id = self._extract_session_id(file_path.name)
         
         events = []
-        user_intent = ""
+        user_messages = []
         tool_calls = []
         token_usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
         current_model = ""
@@ -56,10 +56,13 @@ class PiParser(SessionParser):
                     continue
                     
                 entry_type = entry.get("type", "")
-                
+                entry_timestamp = entry.get("timestamp", "")
+                if entry_timestamp:
+                    timestamp_end = entry_timestamp
+
                 # Session start
                 if entry_type == "session":
-                    timestamp_start = entry.get("timestamp", "")
+                    timestamp_start = entry_timestamp
                     if not session_id:
                         session_id = entry.get("id", "unknown")
                         
@@ -75,15 +78,14 @@ class PiParser(SessionParser):
                     
                     if role == "user":
                         # Extract first user intent
-                        if not user_intent:
-                            content = msg.get("content", [])
-                            if isinstance(content, list):
-                                for item in content:
-                                    if isinstance(item, dict) and item.get("type") == "text":
-                                        user_intent = item.get("text", "")
-                                        break
-                            elif isinstance(content, str):
-                                user_intent = content
+                        content = msg.get("content", [])
+                        if isinstance(content, list):
+                            for item in content:
+                                if isinstance(item, dict) and item.get("type") == "text":
+                                    self.collect_user_message(user_messages, item.get("text", ""))
+                                    break
+                        elif isinstance(content, str):
+                            self.collect_user_message(user_messages, content)
                                 
                         events.append({
                             "type": "user_message",
@@ -122,7 +124,7 @@ class PiParser(SessionParser):
                         # Check stop reason
                         stop_reason = msg.get("stopReason", "")
                         if stop_reason == "endTurn":
-                            timestamp_end = entry.get("timestamp", "")
+                            timestamp_end = entry_timestamp
                             
                     elif role == "toolResult":
                         tool_name = msg.get("toolName", "")
@@ -138,7 +140,7 @@ class PiParser(SessionParser):
                                         events.append({
                                             "type": "file_modified",
                                             "timestamp": entry.get("timestamp", ""),
-                                            "description": f"Modified file",
+                                            "description": "Modified file",
                                             "icon": "📝"
                                         })
                                         
@@ -155,7 +157,8 @@ class PiParser(SessionParser):
         
         # Build timeline
         timeline = self.build_timeline(events)
-        
+        user_summary = self.build_user_message_summary(user_messages)
+
         return SessionSummary(
             session_id=session_id,
             agent_type=AgentType.PI,
@@ -164,7 +167,12 @@ class PiParser(SessionParser):
             timestamp_start=timestamp_start,
             timestamp_end=timestamp_end,
             status=status,
-            user_intent=self.extract_user_intent(user_intent),
+            user_intent=user_summary["user_intent"],
+            first_user_message=user_summary["first_user_message"],
+            last_user_message=user_summary["last_user_message"],
+            user_messages=user_summary["user_messages"],
+            user_message_count=user_summary["user_message_count"],
+            intent_evolution=user_summary["intent_evolution"],
             timeline=timeline,
             tool_calls=tool_calls,
             token_usage=token_usage,

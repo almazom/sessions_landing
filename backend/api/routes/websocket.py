@@ -1,18 +1,21 @@
 """WebSocket route for real-time session updates."""
 
-import asyncio
 import json
+import secrets
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
 
+from backend.api.deps import get_current_websocket_user
+from backend.api.logging_utils import get_logger, log_event
 from backend.api.scanner import session_store, session_scanner
 
 
 router = APIRouter(tags=["WebSocket"])
+logger = get_logger("agent_nexus.websocket")
 
 
 class WSMessage(BaseModel):
@@ -37,7 +40,14 @@ class ConnectionManager:
         """Accept new connection."""
         await websocket.accept()
         self.active_connections.append(websocket)
-        print(f"🔌 WebSocket подключён. Всего: {len(self.active_connections)}")
+        log_event(
+            logger,
+            "info",
+            "websocket.connected",
+            connection_id=getattr(websocket.state, "connection_id", ""),
+            client_ip=websocket.client.host if websocket.client else "unknown",
+            active_connections=len(self.active_connections),
+        )
         
         # Отправляем приветствие
         await self.send_personal(websocket, WSMessage(
@@ -49,14 +59,29 @@ class ConnectionManager:
         """Remove connection."""
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-        print(f"🔌 WebSocket отключён. Осталось: {len(self.active_connections)}")
+        log_event(
+            logger,
+            "info",
+            "websocket.disconnected",
+            connection_id=getattr(websocket.state, "connection_id", ""),
+            client_ip=websocket.client.host if websocket.client else "unknown",
+            active_connections=len(self.active_connections),
+        )
     
     async def send_personal(self, websocket: WebSocket, message: WSMessage):
         """Send message to specific client."""
         try:
             await websocket.send_text(message.model_dump_json())
         except Exception as e:
-            print(f"❌ Ошибка отправки: {e}")
+            log_event(
+                logger,
+                "error",
+                "websocket.send_failed",
+                connection_id=getattr(websocket.state, "connection_id", ""),
+                message_type=message.type,
+                error_type=type(e).__name__,
+                error_message=str(e),
+            )
     
     async def broadcast(self, message: WSMessage):
         """Broadcast to all connected clients."""
@@ -75,6 +100,15 @@ class ConnectionManager:
         # Удаляем отключённые
         for conn in disconnected:
             self.disconnect(conn)
+
+        log_event(
+            logger,
+            "info",
+            "websocket.broadcast.completed",
+            message_type=message.type,
+            recipients=len(self.active_connections),
+            disconnected=len(disconnected),
+        )
     
     async def broadcast_session_update(self, session_data: dict):
         """Broadcast session update to all clients."""
@@ -98,7 +132,6 @@ manager = ConnectionManager()
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: Optional[str] = Query(None),
 ):
     """
     🔌 WebSocket endpoint для real-time обновлений
@@ -116,6 +149,25 @@ async def websocket_endpoint(
     - {"type": "subscribe", "data": {"session_id": "..."}} 
     - {"type": "rescan"}
     """
+    websocket.state.connection_id = secrets.token_hex(6)
+
+    try:
+        await get_current_websocket_user(websocket)
+    except Exception as error:
+        if isinstance(error, WebSocketDisconnect):
+            return
+        log_event(
+            logger,
+            "warning",
+            "websocket.auth_failed",
+            connection_id=getattr(websocket.state, "connection_id", ""),
+            client_ip=websocket.client.host if websocket.client else "unknown",
+            error_type=type(error).__name__,
+            error_message=str(error),
+        )
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     await manager.connect(websocket)
     
     try:
@@ -126,6 +178,13 @@ async def websocket_endpoint(
             try:
                 msg = json.loads(data)
                 msg_type = msg.get("type", "")
+                log_event(
+                    logger,
+                    "info",
+                    "websocket.message.received",
+                    connection_id=getattr(websocket.state, "connection_id", ""),
+                    message_type=msg_type,
+                )
                 
                 # Ping-Pong
                 if msg_type == "ping":
@@ -170,11 +229,25 @@ async def websocket_endpoint(
                     type="error",
                     data={"message": "Неверный JSON"}
                 ))
+                log_event(
+                    logger,
+                    "warning",
+                    "websocket.message.invalid_json",
+                    connection_id=getattr(websocket.state, "connection_id", ""),
+                )
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
-        print(f"❌ WebSocket error: {e}")
+        log_event(
+            logger,
+            "error",
+            "websocket.connection_failed",
+            connection_id=getattr(websocket.state, "connection_id", ""),
+            client_ip=websocket.client.host if websocket.client else "unknown",
+            error_type=type(e).__name__,
+            error_message=str(e),
+        )
         manager.disconnect(websocket)
 
 

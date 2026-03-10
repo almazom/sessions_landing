@@ -1,13 +1,11 @@
 """SQLite database for session persistence with FTS5 search."""
 
-import asyncio
 import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from contextlib import contextmanager
-from dataclasses import dataclass
 
 # Database path
 DB_PATH = Path("~/.nexus/nexus.db").expanduser()
