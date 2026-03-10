@@ -58,6 +58,8 @@ type LatestSessionPayload = {
     started_at?: string;
     started_at_local?: string;
     intent_evolution?: string[];
+    intent_summary_source?: 'ai' | 'local_fallback';
+    intent_summary_provider?: string;
   } | null;
   errors: Array<{
     detail: string;
@@ -439,6 +441,8 @@ test.describe('Published URL end-to-end', () => {
             started_at_local: '2026-03-10 11:00:00 MSK',
             duration_seconds: 9000,
             duration_human: '2 ч 30 мин',
+            intent_summary_source: 'ai',
+            intent_summary_provider: 'qwen',
             intent_evolution: [
               'починить фильтр сегодня',
               'исправить latest карточку',

@@ -232,7 +232,7 @@ async function waitForAnyStage(page, timeoutMs) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     for (const [name, locator] of candidates) {
-      if (await locator.count() > 0) {
+      if (await locator.count() > 0 && await locator.first().isVisible().catch(() => false)) {
         return name;
       }
     }

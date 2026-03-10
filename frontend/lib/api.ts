@@ -71,6 +71,8 @@ export interface LatestSessionSummary {
   first_user_message: string;
   last_user_message: string;
   intent_evolution: string[];
+  intent_summary_source?: 'ai' | 'local_fallback';
+  intent_summary_provider?: string;
 }
 
 export interface LatestSessionResponse {
@@ -88,6 +90,8 @@ export interface LatestSessionResponse {
     timezone: string;
     live_within_minutes: number;
     active_within_minutes: number;
+    cognize_prompt_id?: string;
+    cognize_provider_chain?: string;
     providers_config_path: string;
   };
   latest: LatestSessionSummary | null;

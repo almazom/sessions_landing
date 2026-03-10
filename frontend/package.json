@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "playwright:install": "playwright install chromium",
+    "check:published": "node scripts/check-published-url.mjs",
+    "login:published:visual": "node scripts/e2e-smoke-pipeline.mjs --mode login",
+    "smoke:published:visual": "node scripts/e2e-smoke-pipeline.mjs",
+    "confidence:published:visual": "node scripts/e2e-confidence-runner.mjs",
+    "test:e2e:published": "playwright test"
   },
   "dependencies": {
     "next": "14.2.0",
@@ -17,9 +23,11 @@
     "postcss": "^8.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "playwright-core": "1.58.2",
     "typescript": "^5.0.0"
   }
 }
