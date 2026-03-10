@@ -2,18 +2,18 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "tools/nx-collect/MANIFEST.json",
   "title": "nx-collect Tool Manifest",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "identity": {
     "name": "nx-collect",
     "description": "Collect canonical session artifacts across providers and return one global latest result through one coordinator running provider-specific shell probes in parallel",
     "stateless": true
   },
   "contracts": {
-    "input": "session-collect-request@2.2.0",
-    "output": "session-collect-result@2.2.0"
+    "input": "session-collect-request@2.3.0",
+    "output": "session-collect-result@2.3.0"
   },
   "cli": {
-    "usage": "tools/nx-collect/nx-collect [latest|--latest] [--providers <LIST>] [--output <FILE>]",
+    "usage": "tools/nx-collect/nx-collect [latest|--latest] [--project <DIR>] [--providers <LIST>] [--output <FILE>]",
     "flags": [
       {
         "name": "latest",
@@ -35,6 +35,11 @@
         "name": "--providers-config",
         "type": "string",
         "description": "Override provider catalog JSON path"
+      },
+      {
+        "name": "--project",
+        "type": "string",
+        "description": "Restrict latest lookup to one project path or project hint"
       },
       {
         "name": "--timezone",

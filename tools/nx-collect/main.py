@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 TOOL_NAME = "nx-collect"
-TOOL_VERSION = "2.2.0"
+TOOL_VERSION = "2.3.0"
 DEFAULT_LIVE_MINUTES = 10
 DEFAULT_ACTIVE_MINUTES = 60
 DEFAULT_MODE = "latest"
@@ -68,6 +68,18 @@ NOISE_PATTERNS = (
     "<local-command-caveat>",
 )
 FIND_OUTPUT_PATTERN = re.compile(r"^(?P<epoch>\d+(?:\.\d+)?) (?P<path>.+)$")
+PROJECT_SIGNAL_KEYS = {
+    "cwd",
+    "project",
+    "project_path",
+    "projectPath",
+    "root",
+    "root_path",
+    "rootPath",
+    "workdir",
+    "working_directory",
+    "workspace",
+}
 
 
 @dataclass(frozen=True)
@@ -88,6 +100,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--latest", action="store_true", help="Alias for the latest collection mode")
     parser.add_argument("--providers", default="all", help="Comma-separated provider list or 'all'")
     parser.add_argument("--providers-config", help="Override provider catalog JSON path")
+    parser.add_argument("--project", help="Restrict latest lookup to one project path or project hint")
     parser.add_argument("--timezone", default=DEFAULT_TIMEZONE, help="IANA timezone for local rendering")
     parser.add_argument(
         "--live-within-minutes",
@@ -179,6 +192,37 @@ def normalize_text(value: Any, limit: int = 280) -> str:
     if len(text) <= limit:
         return text
     return text[:limit].rstrip()
+
+
+def normalize_project_value(value: str) -> str:
+    lowered = value.replace("\\", "/").strip().lower()
+    return re.sub(r"[^a-zа-я0-9]+", "-", lowered).strip("-")
+
+
+def resolve_project_spec(spec: str) -> str:
+    path = Path(spec).expanduser()
+    if path.exists():
+        return str(path.resolve())
+    return str(path)
+
+
+def build_project_aliases(project_spec: str) -> List[str]:
+    resolved = resolve_project_spec(project_spec)
+    parts = [part for part in PurePosixPath(resolved.replace("\\", "/")).parts if part and part not in {"/"}]
+    aliases = {
+        normalize_project_value(resolved),
+        normalize_project_value(PurePosixPath(resolved.replace("\\", "/")).name),
+    }
+    if len(parts) >= 2:
+        aliases.add(normalize_project_value("/".join(parts[-2:])))
+    return [alias for alias in aliases if alias]
+
+
+def contains_project_alias(value: str, aliases: List[str]) -> bool:
+    if not value:
+        return False
+    normalized = normalize_project_value(value)
+    return any(alias and alias in normalized for alias in aliases)
 
 
 def wrap_record(value: Any) -> Dict[str, Any]:
@@ -297,6 +341,34 @@ def load_records(path: Path) -> Tuple[List[Dict[str, Any]], int]:
     return records, parse_errors
 
 
+def load_probe_records(path: Path, limit: int = 20) -> List[Dict[str, Any]]:
+    records: List[Dict[str, Any]] = []
+    source_format = detect_format(path)
+    if source_format == "jsonl":
+        with open(path, "r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                if len(records) >= limit:
+                    break
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    payload = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                records.append(wrap_record(payload))
+        return records
+
+    with open(path, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if isinstance(payload, list):
+        for item in payload[:limit]:
+            records.append(wrap_record(item))
+    else:
+        records.append(wrap_record(payload))
+    return records
+
+
 def extract_session_messages(path: Path) -> Tuple[List[str], int, int]:
     records, parse_errors = load_records(path)
     return summarize_records(records, parse_errors)
@@ -341,6 +413,43 @@ def extract_timestamps(value: Any, results: List[datetime]) -> None:
     if isinstance(value, list):
         for item in value:
             extract_timestamps(item, results)
+
+
+def extract_project_signals(value: Any, results: List[str]) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in PROJECT_SIGNAL_KEYS and isinstance(item, str):
+                text = normalize_text(item, 400)
+                if text:
+                    results.append(text)
+            if isinstance(item, (dict, list)):
+                extract_project_signals(item, results)
+        return
+    if isinstance(value, list):
+        for item in value[:20]:
+            extract_project_signals(item, results)
+
+
+def candidate_matches_project(candidate: Candidate, aliases: List[str], signal_cache: Dict[str, List[str]]) -> bool:
+    fast_values = [
+        str(candidate.path),
+        candidate.relative_path,
+        project_hint_from_relative(candidate.relative_path),
+    ]
+    if any(contains_project_alias(value, aliases) for value in fast_values):
+        return True
+
+    cache_key = str(candidate.path)
+    if cache_key not in signal_cache:
+        signals: List[str] = []
+        try:
+            for record in load_probe_records(candidate.path):
+                extract_project_signals(record, signals)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            signals = []
+        signal_cache[cache_key] = dedupe_texts(signals)
+
+    return any(contains_project_alias(value, aliases) for value in signal_cache[cache_key])
 
 
 def summarize_intent_step(text: str) -> str:
@@ -792,6 +901,15 @@ def main() -> int:
                 }
             )
 
+    project_aliases = build_project_aliases(args.project) if args.project else []
+    project_signal_cache: Dict[str, List[str]] = {}
+    if project_aliases:
+        all_candidates = [
+            candidate
+            for candidate in all_candidates
+            if candidate_matches_project(candidate, project_aliases, project_signal_cache)
+        ]
+
     sorted_candidates = sort_candidates(all_candidates, providers)
     latest_candidate = sorted_candidates[0] if sorted_candidates else None
     enriched_cache: Dict[str, Dict[str, Any]] = {}
@@ -837,6 +955,7 @@ def main() -> int:
         "query": {
             "mode": mode,
             "providers": providers,
+            "project": resolve_project_spec(args.project) if args.project else "",
             "timezone": timezone_label,
             "live_within_minutes": args.live_within_minutes,
             "active_within_minutes": args.active_within_minutes,
