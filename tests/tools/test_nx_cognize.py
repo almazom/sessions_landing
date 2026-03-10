@@ -59,6 +59,10 @@ class NxCognizeTests(unittest.TestCase):
             self.assertEqual(payload["meta"]["selected_provider"], "local")
             self.assertEqual(payload["summary"]["intent_bullets"], payload["summary"]["intent_steps_ru"])
             self.assertEqual(
+                payload["summary"]["summary"],
+                "Пользователь хочет исправить latest карточку, показать полный путь и проверить published flow.",
+            )
+            self.assertEqual(
                 payload["summary"]["intent_steps_ru"],
                 [
                     "исправить latest карточку",

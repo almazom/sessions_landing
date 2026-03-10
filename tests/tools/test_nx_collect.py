@@ -224,6 +224,84 @@ class NxCollectTests(unittest.TestCase):
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("unrecognized arguments: --limit=3", completed.stderr)
 
+    def test_latest_can_filter_by_project_path_using_codex_cwd_and_provider_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            project_path = root / "sessions_landing"
+            other_project = root / "other_project"
+            codex_root = root / "codex"
+            qwen_root = root / "qwen"
+
+            codex_file = codex_root / "2026" / "03" / "10" / "rollout-project.jsonl"
+            qwen_file = qwen_root / "-tmp" / f"-{project_path.as_posix().strip('/').replace('/', '-')}" / "chats" / "latest.jsonl"
+            non_match_file = qwen_root / "-tmp" / f"-{other_project.as_posix().strip('/').replace('/', '-')}" / "chats" / "newest.jsonl"
+
+            write_jsonl(
+                codex_file,
+                [
+                    {
+                        "timestamp": "2026-03-10T10:00:00+00:00",
+                        "type": "session_meta",
+                        "payload": {
+                            "cwd": str(project_path),
+                        },
+                    },
+                    {"role": "user", "content": "codex project session"},
+                ],
+            )
+            write_jsonl(
+                qwen_file,
+                [
+                    {"role": "user", "content": "matching qwen project session"},
+                ],
+            )
+            write_jsonl(
+                non_match_file,
+                [
+                    {"role": "user", "content": "newer but wrong project"},
+                ],
+            )
+            os.utime(codex_file, (1_800_000_000, 1_800_000_000))
+            os.utime(qwen_file, (1_850_000_000, 1_850_000_000))
+            os.utime(non_match_file, (1_900_000_000, 1_900_000_000))
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["codex", "qwen"],
+                    "providers": {
+                        "codex": {
+                            "root": str(codex_root),
+                            "include": ["**/rollout-*.jsonl"],
+                            "exclude": [],
+                        },
+                        "qwen": {
+                            "root": str(qwen_root),
+                            "include": ["**/chats/*.jsonl"],
+                            "exclude": [],
+                        },
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--latest",
+                "--providers-config",
+                str(config_path),
+                "--project",
+                str(project_path),
+                "--timezone",
+                "UTC",
+                "--cognize-provider-chain",
+                "local",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            self.assertEqual(payload["query"]["project"], str(project_path.resolve()))
+            self.assertEqual(payload["latest"]["path"], str(qwen_file.resolve()))
+            self.assertEqual(payload["latest"]["first_user_message"], "matching qwen project session")
+
     def test_gemini_json_sessions_extract_nested_user_messages(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -383,7 +461,7 @@ class NxCollectTests(unittest.TestCase):
             self.assertEqual(latest["intent_summary_source"], "local_fallback")
             self.assertEqual(latest["intent_evolution"], [
                 "исправить latest карточку",
-                "улучшить вектор намерений",
+                "усилить карточку сессии",
                 "сделать latest карточку добавить intent",
             ])
 
