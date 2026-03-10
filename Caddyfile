@@ -1,33 +1,50 @@
 # Agent Nexus - VPS Configuration
-# Access via: http://107.174.231.22:8888
-
+# Access via: http://{$NEXUS_PUBLIC_HOST:107.174.231.22}:{$NEXUS_PUBLIC_PORT:8888}
 {
-    admin localhost:2018
+	admin {$NEXUS_CADDY_ADMIN_HOST:localhost}:{$NEXUS_CADDY_ADMIN_PORT:2018}
 }
 
-:8888 {
-    # Enable logging
-    log {
-        output file /home/pets/temp/sessions_landing/caddy.log
-    }
+:{$NEXUS_PUBLIC_PORT:8888} {
+	# Enable logging
+	log {
+		output file /home/pets/temp/sessions_landing/caddy.log
+	}
 
-    # API routes go to backend
-    handle /api/* {
-        reverse_proxy localhost:18890
-    }
+	header {
+		Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+		Pragma "no-cache"
+		Expires "0"
+	}
 
-    # WebSocket for real-time updates
-    handle /ws {
-        reverse_proxy localhost:18890
-    }
+	# API routes go to backend
+	handle /api/* {
+		reverse_proxy 127.0.0.1:{$NEXUS_BACKEND_PORT:18890} {
+			header_down -Cache-Control
+			header_down -Pragma
+			header_down -Expires
+		}
+	}
 
-    # Health check
-    handle /health {
-        reverse_proxy localhost:18890
-    }
+	# WebSocket for real-time updates
+	handle /ws {
+		reverse_proxy 127.0.0.1:{$NEXUS_BACKEND_PORT:18890}
+	}
 
-    # Everything else goes to frontend dev server
-    handle {
-        reverse_proxy localhost:3000
-    }
+	# Health check
+	handle /health {
+		reverse_proxy 127.0.0.1:{$NEXUS_BACKEND_PORT:18890} {
+			header_down -Cache-Control
+			header_down -Pragma
+			header_down -Expires
+		}
+	}
+
+	# Everything else goes to frontend dev server
+	handle {
+		reverse_proxy 127.0.0.1:{$NEXUS_FRONTEND_PORT:3000} {
+			header_down -Cache-Control
+			header_down -Pragma
+			header_down -Expires
+		}
+	}
 }

@@ -53,6 +53,7 @@ frontend/node_modules/
 # Logs
 *.log
 npm-debug.log*
+tools/nx-cognize/provider-state.local.json
 
 # Database (optional - uncomment if needed)
 # *.db

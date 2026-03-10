@@ -6,31 +6,36 @@ set -e
 
 cd /home/pets/temp/sessions_landing
 
-# Загрузить .env
-set -a
-source .env 2>/dev/null || true
-set +a
+source /home/pets/temp/sessions_landing/config/runtime.sh
+load_runtime_config
+
+HEALTHCHECK_HOST=$NEXUS_HOST
+if [ "$HEALTHCHECK_HOST" = "0.0.0.0" ]; then
+    HEALTHCHECK_HOST=127.0.0.1
+fi
 
 # Остановить старые процессы
 pkill -f "uvicorn backend.api.main:app" 2>/dev/null || true
-sleep 2
+sleep "$NEXUS_PROCESS_STOP_WAIT_SECONDS"
 
 # Проверить порт
-if lsof -i:18888 >/dev/null 2>&1; then
-    echo "❌ Порт 18888 занят"
-    lsof -i:18888
+PORT=${NEXUS_BACKEND_PORT}
+if lsof -i:$PORT >/dev/null 2>&1; then
+    echo "❌ Порт $PORT занят"
+    lsof -i:$PORT
     exit 1
 fi
 
 echo "🚀 Agent Nexus"
-echo "   URL: http://0.0.0.0:18888"
+echo "   Backend: http://0.0.0.0:$PORT"
+echo "   Public:  $NEXUS_PUBLIC_URL"
 echo "   Password: ✅ Set from .env"
 echo ""
 
 # Запуск с nohup
 nohup python3 -m uvicorn backend.api.main:app \
-    --host 0.0.0.0 \
-    --port 18888 \
+    --host "$NEXUS_HOST" \
+    --port $PORT \
     > /tmp/nexus.log 2>&1 &
 
 NEXUS_PID=$!
@@ -39,16 +44,16 @@ echo "PID: $NEXUS_PID"
 # Сохранить PID
 echo $NEXUS_PID > /tmp/nexus.pid
 
-sleep 5
+sleep "$NEXUS_HEALTHCHECK_WAIT_SECONDS"
 
 # Проверка
-if curl -s http://localhost:18888/health >/dev/null 2>&1; then
+if curl -s "http://$HEALTHCHECK_HOST:$PORT/health" >/dev/null 2>&1; then
     echo "✅ Server running!"
     echo ""
     echo "🌐 URLs:"
-    echo "   Local:  http://localhost:18888"
-    echo "   Global: http://107.174.231.22:18888"
-    echo "   API:    http://107.174.231.22:18888/api/docs"
+    echo "   Backend: http://$HEALTHCHECK_HOST:$PORT"
+    echo "   Public:  $NEXUS_PUBLIC_URL"
+    echo "   API:     $NEXUS_PUBLIC_URL/api/docs"
     echo ""
     echo "📝 Logs: tail -f /tmp/nexus.log"
 else

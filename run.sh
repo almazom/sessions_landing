@@ -5,26 +5,22 @@
 set -e
 
 cd /home/pets/temp/sessions_landing
-
-# Load .env
-if [ -f .env ]; then
-    echo "📁 Загрузка .env..."
-    export $(grep -v '^#' .env | xargs)
-fi
+source /home/pets/temp/sessions_landing/config/runtime.sh
+load_runtime_config
 
 # Вывод конфигурации (без пароля!)
 echo "🚀 Agent Nexus"
-echo "   Host: ${NEXUS_HOST:-0.0.0.0}"
-echo "   Port: ${NEXUS_PORT:-18888}"
+echo "   Host: ${NEXUS_HOST}"
+echo "   Port: ${NEXUS_BACKEND_PORT}"
 echo "   Password: ${NEXUS_PASSWORD:+✅ Установлен}"
 echo "   DB: ${NEXUS_DB_PATH:-~/.nexus/nexus.db}"
 echo ""
 
 # Остановить старый процесс
 pkill -f "uvicorn backend.api.main:app" 2>/dev/null || true
-sleep 2
+sleep "$NEXUS_PROCESS_STOP_WAIT_SECONDS"
 
 # Запуск
 exec python3 -m uvicorn backend.api.main:app \
-    --host ${NEXUS_HOST:-0.0.0.0} \
-    --port ${NEXUS_PORT:-18888}
+    --host "$NEXUS_HOST" \
+    --port "$NEXUS_BACKEND_PORT"

@@ -2,7 +2,7 @@
 # Copy this to /etc/caddy/Caddyfile
 
 # Static files (existing)
-:18888 {
+:{$NEXUS_DEPLOY_PUBLIC_PORT:18888} {
     root * /home/pets/publish-pages
     encode zstd gzip
     file_server
@@ -10,6 +10,6 @@
     # Agent Nexus API proxy
     handle /nexus/* {
         uri strip_prefix /nexus
-        reverse_proxy localhost:18890
+        reverse_proxy 127.0.0.1:{$NEXUS_BACKEND_PORT:18890}
     }
 }

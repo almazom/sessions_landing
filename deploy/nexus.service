@@ -7,7 +7,8 @@ Type=simple
 User=pets
 WorkingDirectory=/home/pets/temp/sessions_landing
 Environment="PYTHONPATH=/home/pets/temp/sessions_landing"
-ExecStart=/usr/bin/python3 -m uvicorn backend.api.main:app --host 0.0.0.0 --port 18888
+EnvironmentFile=/home/pets/temp/sessions_landing/.env
+ExecStart=/bin/sh -lc '/usr/bin/python3 -m uvicorn backend.api.main:app --host "${NEXUS_HOST:-0.0.0.0}" --port "${NEXUS_BACKEND_PORT:-18890}"'
 Restart=always
 RestartSec=5
 StandardOutput=journal
