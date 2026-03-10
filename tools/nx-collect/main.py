@@ -98,6 +98,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("command", nargs="?", choices=[DEFAULT_MODE], help="Collection mode")
     parser.add_argument("--latest", action="store_true", help="Alias for the latest collection mode")
+    parser.add_argument("--provider", help="Single provider alias, e.g. codex or gemini")
     parser.add_argument("--providers", default="all", help="Comma-separated provider list or 'all'")
     parser.add_argument("--providers-config", help="Override provider catalog JSON path")
     parser.add_argument("--project", help="Restrict latest lookup to one project path or project hint")
@@ -151,6 +152,12 @@ def resolve_mode(args: argparse.Namespace) -> str:
     if args.latest:
         return DEFAULT_MODE
     return DEFAULT_MODE
+
+
+def resolve_provider_spec(single_provider: Optional[str], providers_spec: str) -> str:
+    if single_provider and providers_spec != "all":
+        raise ValueError("use either --provider or --providers, not both")
+    return single_provider or providers_spec
 
 
 def resolve_timezone(name: str) -> Tuple[timezone | ZoneInfo, str]:
@@ -375,10 +382,20 @@ def extract_session_messages(path: Path) -> Tuple[List[str], int, int]:
 
 
 def parse_timestamp(value: Any) -> Optional[datetime]:
+    def is_reasonable_year(dt: datetime) -> bool:
+        """Reject timestamps outside 2020-2100 range (unreasonable for sessions)."""
+        return 2020 <= dt.year <= 2100
+
     if isinstance(value, (int, float)):
         if value <= 0:
             return None
-        return datetime.fromtimestamp(float(value), tz=timezone.utc)
+        try:
+            dt = datetime.fromtimestamp(float(value), tz=timezone.utc)
+            if is_reasonable_year(dt):
+                return dt
+        except (ValueError, OSError, OverflowError):
+            pass
+        return None
 
     if not isinstance(value, str):
         return None
@@ -387,7 +404,13 @@ def parse_timestamp(value: Any) -> Optional[datetime]:
     if not raw_value:
         return None
     if raw_value.isdigit():
-        return datetime.fromtimestamp(float(raw_value), tz=timezone.utc)
+        try:
+            dt = datetime.fromtimestamp(float(raw_value), tz=timezone.utc)
+            if is_reasonable_year(dt):
+                return dt
+        except (ValueError, OSError, OverflowError):
+            pass
+        return None
 
     candidate = raw_value.replace("Z", "+00:00")
     try:
@@ -396,8 +419,9 @@ def parse_timestamp(value: Any) -> Optional[datetime]:
         return None
 
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    parsed = parsed.astimezone(timezone.utc)
+    return parsed if is_reasonable_year(parsed) else None
 
 
 def extract_timestamps(value: Any, results: List[datetime]) -> None:
@@ -871,7 +895,7 @@ def main() -> int:
         tzinfo, timezone_label = resolve_timezone(args.timezone)
         base_dir = Path(__file__).resolve().parent
         provider_config, provider_config_path = load_provider_config(base_dir, args.providers_config)
-        providers = resolve_provider_list(args.providers, provider_config)
+        providers = resolve_provider_list(resolve_provider_spec(args.provider, args.providers), provider_config)
     except (ValueError, OSError, json.JSONDecodeError) as exc:
         emit_error(str(exc))
         return 2

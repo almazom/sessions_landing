@@ -102,7 +102,7 @@ class ProviderAttempt:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Cognitive summary over JSON or JSONL source files.")
-    parser.add_argument("--input", "-i", required=True, help="Path to JSON or JSONL input file")
+    parser.add_argument("--input", "-i", help="Path to JSON or JSONL input file")
     parser.add_argument("--output", "-o", help="Write result JSON to file instead of stdout")
     parser.add_argument("--provider-chain", default="auto", help="Comma-separated providers or 'auto'")
     parser.add_argument(
@@ -683,7 +683,12 @@ def refresh_provider_health(
     for provider_name in probe_candidates:
         record = provider_state.get("providers", {}).get(provider_name, {})
         fresh_age = age_seconds(record.get("last_preflight_at"))
-        is_fresh = fresh_age is not None and fresh_age <= refresh_after_seconds
+        last_preflight_ok = record.get("last_preflight_ok") is True
+        is_fresh = (
+            last_preflight_ok and
+            fresh_age is not None and
+            fresh_age <= refresh_after_seconds
+        )
         if force_refresh or not is_fresh:
             providers_to_probe.append(provider_name)
 
@@ -844,6 +849,9 @@ def main() -> int:
     if args.version:
         print(TOOL_VERSION)
         return 0
+    if not args.input:
+        emit_error("[E200] INVALID_ARGUMENT: --input/-i is required unless --version is used")
+        return 2
 
     if args.max_bullets < MIN_BULLETS or args.max_bullets > MAX_BULLETS:
         emit_error("[E200] INVALID_ARGUMENT: --max-bullets must be in range 3..7")

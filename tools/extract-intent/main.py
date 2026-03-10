@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 
 TOOL_NAME = "extract-intent"
-TOOL_VERSION = "1.2.0"
+TOOL_VERSION = "1.7.0"
 PROMPT_ID = "intent-vector-ru"
 DEFAULT_MAX_STEPS = 5
 DEFAULT_PREFLIGHT_TIMEOUT = 30
@@ -31,10 +31,18 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--input", "-i", help="Path to one JSON or JSONL session file")
     parser.add_argument("--project", help="Project folder; resolve the latest session file for this project before extraction")
+    parser.add_argument(
+        "--provider",
+        "--harness-provider",
+        "--hp",
+        dest="harness_provider",
+        help="Single source harness provider alias, used with --project, e.g. gemini or pi",
+    )
     parser.add_argument("--providers", default="all", help="Comma-separated provider list or 'all' when using --project")
     parser.add_argument("--providers-config", help="Override provider catalog JSON path for --project resolution")
     parser.add_argument("--format", default=DEFAULT_FORMAT, choices=["auto", "json", "jsonl"], help="Source format")
     parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS, help="Intent step count, 3-7")
+    parser.add_argument("--processing-provider", "--pp", help="Single AI provider used for semantic summary, e.g. gemini or pi")
     parser.add_argument("--provider-chain", default=DEFAULT_PROVIDER_CHAIN, help="Provider chain for nx-cognize")
     parser.add_argument("--state-file", help="Override nx-cognize provider state cache path")
     parser.add_argument("--preflight-timeout", type=int, default=DEFAULT_PREFLIGHT_TIMEOUT, help="Preflight timeout in seconds")
@@ -49,12 +57,49 @@ def emit_error(message: str) -> None:
     print(message, file=sys.stderr)
 
 
+def resolve_source_provider_spec(single_provider: Optional[str], providers_spec: str) -> str:
+    if single_provider and providers_spec != "all":
+        raise RuntimeError("use either --harness-provider/--hp or --providers, not both")
+    return single_provider or providers_spec
+
+
+def resolve_processing_provider_spec(processing_provider: Optional[str], provider_chain: str) -> str:
+    if processing_provider and provider_chain != DEFAULT_PROVIDER_CHAIN:
+        raise RuntimeError("use either --processing-provider or --provider-chain, not both")
+    return processing_provider or provider_chain
+
+
+def load_default_processing_chain(base_dir: Path) -> List[str]:
+    providers_path = (base_dir.parent / "nx-cognize" / "providers.json").resolve()
+    with open(providers_path, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    default_chain = payload.get("default_chain") or []
+    return [item for item in default_chain if isinstance(item, str)]
+
+
+def resolve_effective_processing_chain(
+    base_dir: Path,
+    processing_provider: Optional[str],
+    provider_chain: str,
+    harness_provider: str,
+) -> str:
+    explicit = resolve_processing_provider_spec(processing_provider, provider_chain)
+    if processing_provider or provider_chain != DEFAULT_PROVIDER_CHAIN or not harness_provider:
+        return explicit
+
+    default_chain = load_default_processing_chain(base_dir)
+    filtered = [item for item in default_chain if item != harness_provider]
+    if filtered:
+        return ",".join(filtered)
+    return explicit
+
+
 def resolve_latest_project_session(
     project_path: str,
     providers: str,
     providers_config: Optional[str],
     base_dir: Path,
-) -> Path:
+) -> Dict[str, str]:
     collect_path = (base_dir.parent / "nx-collect" / "nx-collect").resolve()
     if not collect_path.exists():
         raise RuntimeError("nx-collect wrapper is not available")
@@ -97,10 +142,13 @@ def resolve_latest_project_session(
     latest = payload.get("latest")
     if not isinstance(latest, dict) or not latest.get("path"):
         raise RuntimeError("nx-collect did not find a latest session for this project")
-    return Path(str(latest["path"])).expanduser()
+    return {
+        "path": str(Path(str(latest["path"])).expanduser()),
+        "provider": str(latest.get("provider") or ""),
+    }
 
 
-def build_result(payload: Dict[str, Any]) -> Dict[str, Any]:
+def build_result(payload: Dict[str, Any], source_provider: str = "") -> Dict[str, Any]:
     meta = payload.get("meta") or {}
     source = payload.get("source") or {}
     summary = payload.get("summary") or {}
@@ -116,10 +164,13 @@ def build_result(payload: Dict[str, Any]) -> Dict[str, Any]:
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "prompt_id": PROMPT_ID,
             "selected_provider": selected_provider,
+            "processing_provider": selected_provider,
             "summary_source": summary_source,
             "provider_attempts": meta.get("provider_attempts") or [],
         },
         "source": {
+            "harness_provider": source_provider,
+            "provider": source_provider,
             "format": source.get("format") or DEFAULT_FORMAT,
             "user_message_count": int(source.get("user_message_count") or 0),
             "first_user_message": summary.get("first_user_message") or "",
@@ -147,10 +198,18 @@ def validate_result(payload: Dict[str, Any]) -> None:
 
 
 def render_pretty(payload: Dict[str, Any]) -> str:
+    meta = payload["meta"]
+    source = payload["source"]
     intent = payload["intent"]
     lines = [
         "🧭 Вектор намерений",
     ]
+    harness_provider = str(source.get("harness_provider") or "").strip()
+    processing_provider = str(meta.get("processing_provider") or "").strip()
+    if harness_provider or processing_provider:
+        lines.append(
+            f"🧩 harness: {harness_provider or '-'} · processing: {processing_provider or '-'}"
+        )
     summary = str(intent.get("summary") or "").strip()
     if summary:
         lines.extend([
@@ -188,19 +247,29 @@ def main() -> int:
     if args.preflight_timeout < 1 or args.runtime_timeout < 1:
         emit_error("timeouts must be positive integers")
         return 2
+    if args.harness_provider and not args.project:
+        emit_error("--harness-provider/--hp can be used only together with --project")
+        return 2
+    if args.processing_provider and args.processing_provider not in {"qwen", "gemini", "claude", "pi", "local"}:
+        emit_error("--processing-provider must be one of: qwen, gemini, claude, pi, local")
+        return 2
     if bool(args.input) == bool(args.project):
         emit_error("exactly one selector is required: --input/-i or --project")
         return 2
 
     base_dir = Path(__file__).resolve().parent
+    source_provider = ""
     if args.project:
         try:
-            input_path = resolve_latest_project_session(
+            provider_spec = resolve_source_provider_spec(args.harness_provider, args.providers)
+            resolved = resolve_latest_project_session(
                 project_path=args.project,
-                providers=args.providers,
+                providers=provider_spec,
                 providers_config=args.providers_config,
                 base_dir=base_dir,
             )
+            input_path = Path(resolved["path"])
+            source_provider = resolved["provider"]
         except RuntimeError as exc:
             emit_error(str(exc))
             return 3
@@ -223,7 +292,12 @@ def main() -> int:
         "--prompt-id",
         PROMPT_ID,
         "--provider-chain",
-        args.provider_chain,
+        resolve_effective_processing_chain(
+            base_dir=base_dir,
+            processing_provider=args.processing_provider,
+            provider_chain=args.provider_chain,
+            harness_provider=source_provider,
+        ),
         "--format",
         args.format,
         "--max-bullets",
@@ -260,7 +334,7 @@ def main() -> int:
 
     try:
         cognitive_payload = json.loads(completed.stdout)
-        result = build_result(cognitive_payload)
+        result = build_result(cognitive_payload, source_provider=source_provider)
         validate_result(result)
     except (json.JSONDecodeError, ValueError, TypeError) as exc:
         emit_error(str(exc))

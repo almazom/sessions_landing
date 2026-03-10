@@ -2,15 +2,15 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "tools/extract-intent/MANIFEST.json",
   "title": "extract-intent Tool Manifest",
-  "version": "1.2.0",
+  "version": "1.7.0",
   "identity": {
     "name": "extract-intent",
     "description": "Extract 3-7 easy-to-read Russian intent steps from one JSON or JSONL session file",
     "stateless": true
   },
   "contracts": {
-    "input": "intent-extract-request@1.1.0",
-    "output": "intent-extract-result@1.1.0"
+    "input": "intent-extract-request@1.2.0",
+    "output": "intent-extract-result@1.4.0"
   },
   "cli": {
     "usage": "tools/extract-intent/extract-intent (--input <FILE> | --project <DIR>) [--pretty]",
@@ -28,6 +28,12 @@
         "description": "Project folder; resolve the latest matching session file before extraction"
       },
       {
+        "name": "--provider",
+        "short": "--hp",
+        "type": "string",
+        "description": "Single source harness provider alias, used with --project"
+      },
+      {
         "name": "--providers",
         "type": "string",
         "default": "all",
@@ -43,6 +49,12 @@
         "type": "string",
         "default": "auto",
         "description": "Source format: auto, json, jsonl"
+      },
+      {
+        "name": "--processing-provider",
+        "short": "--pp",
+        "type": "string",
+        "description": "Single AI provider used for semantic summary, e.g. gemini or pi"
       },
       {
         "name": "--max-steps",

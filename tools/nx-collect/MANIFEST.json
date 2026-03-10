@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "tools/nx-collect/MANIFEST.json",
   "title": "nx-collect Tool Manifest",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "identity": {
     "name": "nx-collect",
     "description": "Collect canonical session artifacts across providers and return one global latest result through one coordinator running provider-specific shell probes in parallel",
@@ -24,6 +24,11 @@
         "name": "--latest",
         "type": "boolean",
         "description": "Alias for the latest subcommand"
+      },
+      {
+        "name": "--provider",
+        "type": "string",
+        "description": "Single provider alias, e.g. codex or gemini"
       },
       {
         "name": "--providers",
