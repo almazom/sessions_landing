@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 TOOL_NAME = "nx-collect"
-TOOL_VERSION = "2.3.0"
+TOOL_VERSION = "2.5.0"
 DEFAULT_LIVE_MINUTES = 10
 DEFAULT_ACTIVE_MINUTES = 60
 DEFAULT_MODE = "latest"
@@ -139,6 +139,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--output", "-o", help="Write result JSON to file instead of stdout")
     parser.add_argument("--version", action="store_true", help="Show version")
+    parser.add_argument("--date", help="Filter sessions by date: today, yesterday, YYYY-MM-DD, or last-N-days")
+    parser.add_argument("--pretty", action="store_true", help="Render human-friendly terminal view instead of JSON")
     return parser.parse_args()
 
 
@@ -147,6 +149,8 @@ def emit_error(message: str) -> None:
 
 
 def resolve_mode(args: argparse.Namespace) -> str:
+    if args.date:
+        return "list"
     if args.command:
         return args.command
     if args.latest:
@@ -159,6 +163,110 @@ def resolve_provider_spec(single_provider: Optional[str], providers_spec: str) -
         raise ValueError("use either --provider or --providers, not both")
     return single_provider or providers_spec
 
+
+
+
+def parse_date_filter(date_spec: str, tzinfo: timezone | ZoneInfo) -> Tuple[datetime, datetime]:
+    """Parse date filter spec and return (start_utc, end_utc) range.
+    
+    Supported formats:
+    - today: from 00:00 today to now
+    - yesterday: from 00:00 yesterday to 00:00 today
+    - YYYY-MM-DD: specific date from 00:00 to 23:59:59
+    - last-N-days: last N days from now
+    """
+    now = datetime.now(tzinfo)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    spec = date_spec.strip().lower()
+    
+    if spec == "today":
+        return today_start.astimezone(timezone.utc), now.astimezone(timezone.utc)
+    
+    if spec == "yesterday":
+        yesterday_start = today_start - timedelta(days=1)
+        return yesterday_start.astimezone(timezone.utc), today_start.astimezone(timezone.utc)
+    
+    # Check for last-N-days pattern
+    last_n_match = re.match(r"^last-(\d+)-days?$", spec)
+    if last_n_match:
+        n_days = int(last_n_match.group(1))
+        start = (today_start - timedelta(days=n_days - 1)).astimezone(timezone.utc)
+        return start, now.astimezone(timezone.utc)
+    
+    # Try to parse as YYYY-MM-DD
+    try:
+        target_date = datetime.strptime(date_spec.strip(), "%Y-%m-%d")
+        target_date = target_date.replace(tzinfo=tzinfo)
+        start_utc = target_date.astimezone(timezone.utc)
+        end_utc = (target_date + timedelta(days=1) - timedelta(seconds=1)).astimezone(timezone.utc)
+        return start_utc, end_utc
+    except ValueError:
+        pass
+    
+    raise ValueError(f"Invalid date filter: {date_spec}. Use: today, yesterday, YYYY-MM-DD, or last-N-days")
+
+
+def filter_candidates_by_date(
+    candidates: List[Candidate],
+    start_utc: datetime,
+    end_utc: datetime,
+) -> List[Candidate]:
+    """Filter candidates to only those modified within the date range."""
+    return [
+        candidate
+        for candidate in candidates
+        if start_utc.timestamp() <= candidate.modified_epoch <= end_utc.timestamp()
+    ]
+
+
+def render_sessions_pretty(
+    sessions: List[Dict[str, Any]],
+    date_filter: str,
+    tzinfo: timezone | ZoneInfo,
+) -> str:
+    """Render sessions list in human-friendly format."""
+    lines = []
+    count = len(sessions)
+    
+    # Header
+    if date_filter == "today":
+        header = f"📋 Сессии за сегодня ({count})"
+    elif date_filter == "yesterday":
+        header = f"📋 Сессии за вчера ({count})"
+    else:
+        header = f"📋 Сессии за {date_filter} ({count})"
+    
+    lines.append(header)
+    lines.append("━" * 40)
+    lines.append("")
+    
+    if not sessions:
+        lines.append("Нет сессий за указанный период")
+        return "\n".join(lines)
+    
+    # Sort by modified time (newest first)
+    sorted_sessions = sorted(sessions, key=lambda s: s.get("modified_at", ""), reverse=True)
+    
+    for session in sorted_sessions:
+        provider = session.get("provider", "?")
+        modified_human = session.get("modified_human", "?")
+        path = session.get("path", "?")
+        activity = session.get("activity_state", "idle")
+        
+        # Activity indicator
+        if activity == "live":
+            indicator = "🟢"
+        elif activity == "active":
+            indicator = "🟡"
+        else:
+            indicator = "⚪"
+        
+        lines.append(f"{indicator} {provider} · {modified_human}")
+        lines.append(f"   {path}")
+        lines.append("")
+    
+    return "\n".join(lines).rstrip()
 
 def resolve_timezone(name: str) -> Tuple[timezone | ZoneInfo, str]:
     try:
@@ -852,7 +960,7 @@ def enrich_candidate(
 
 
 def validate_result(payload: Dict[str, Any]) -> None:
-    required = ["meta", "query", "latest", "errors"]
+    required = ["meta", "query", "sessions", "latest", "errors"]
     missing = [key for key in required if key not in payload]
     if missing:
         raise ValueError(f"missing result keys: {', '.join(missing)}")
@@ -965,6 +1073,92 @@ def main() -> int:
         enriched_cache[cache_key] = summary
         return summary
 
+    # Handle date filter mode
+    date_filter = getattr(args, 'date', None)
+    pretty = getattr(args, 'pretty', False)
+    
+    if date_filter:
+        try:
+            start_utc, end_utc = parse_date_filter(date_filter, tzinfo)
+        except ValueError as exc:
+            emit_error(str(exc))
+            return 2
+        
+        # Filter candidates by date
+        date_filtered = filter_candidates_by_date(sorted_candidates, start_utc, end_utc)
+        
+        # Build sessions list
+        sessions: List[Dict[str, Any]] = []
+        for candidate in date_filtered:
+            summary, parse_error = enrich_candidate(
+                candidate,
+                base_dir=base_dir,
+                tzinfo=tzinfo,
+                live_minutes=args.live_within_minutes,
+                active_minutes=args.active_within_minutes,
+                cognize_prompt_id=args.cognize_prompt_id,
+                cognize_provider_chain=args.cognize_provider_chain,
+                cognize_preflight_timeout=args.cognize_preflight_timeout,
+                cognize_runtime_timeout=args.cognize_runtime_timeout,
+            )
+            if parse_error:
+                stage = "cognize" if parse_error.startswith("cognize: ") else "parse"
+                errors.append(
+                    {
+                        "provider": candidate.provider,
+                        "stage": stage,
+                        "detail": f"{candidate.path}: {parse_error.removeprefix('cognize: ')}",
+                    }
+                )
+            sessions.append(summary)
+        
+        result = {
+            "meta": {
+                "tool": TOOL_NAME,
+                "tool_version": TOOL_VERSION,
+                "generated_at": utcnow_iso(),
+                "timezone": timezone_label,
+                "scanned_providers": len(providers),
+                "scanned_files": len(date_filtered),
+            },
+            "query": {
+                "mode": mode,
+                "providers": providers,
+                "project": resolve_project_spec(args.project) if args.project else "",
+                "date_filter": date_filter,
+                "timezone": timezone_label,
+                "live_within_minutes": args.live_within_minutes,
+                "active_within_minutes": args.active_within_minutes,
+                "cognize_prompt_id": args.cognize_prompt_id,
+                "cognize_provider_chain": args.cognize_provider_chain,
+                "providers_config_path": str(provider_config_path),
+            },
+            "sessions": sessions,
+            "latest": None,
+            "errors": errors,
+        }
+        
+        try:
+            validate_result(result)
+        except ValueError as exc:
+            emit_error(str(exc))
+            return 4
+        
+        if pretty:
+            rendered = render_sessions_pretty(sessions, date_filter, tzinfo)
+            if args.output:
+                path = Path(args.output).expanduser()
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, "w", encoding="utf-8") as handle:
+                    handle.write(rendered)
+                    handle.write("\n")
+            else:
+                sys.stdout.write(rendered)
+                sys.stdout.write("\n")
+        else:
+            write_output(result, args.output)
+        return 0
+
     latest = cached_enrich(latest_candidate) if latest_candidate else None
 
     result = {
@@ -987,6 +1181,7 @@ def main() -> int:
             "cognize_provider_chain": args.cognize_provider_chain,
             "providers_config_path": str(provider_config_path),
         },
+        "sessions": [],
         "latest": latest,
         "errors": errors,
     }
