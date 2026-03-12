@@ -7,9 +7,17 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from starlette.concurrency import run_in_threadpool
 
 from backend.api.logging_utils import get_logger, log_event
 from backend.api.scanner import session_store, session_scanner
+from backend.api.session_artifacts import (
+    attach_session_route,
+    build_session_detail_payload,
+    parse_session_file,
+    resolve_session_file_fallback,
+    resolve_session_file_from_store,
+)
 from ..deps import get_current_user
 from ..settings import settings
 
@@ -43,6 +51,24 @@ def _validate_latest_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 def _format_cli_error(detail: str) -> str:
     normalized = " ".join(detail.split())
     return normalized[:400] if len(normalized) > 400 else normalized
+
+
+def _ensure_sessions_loaded() -> None:
+    if session_store.count() == 0 and not session_scanner.has_loaded_once:
+        session_scanner.ensure_loaded()
+
+
+def _resolve_session_artifact(harness: str, artifact_id: str) -> Dict[str, Any]:
+    _ensure_sessions_loaded()
+    session, file_path = resolve_session_file_from_store(session_store.get_all(), harness, artifact_id)
+
+    if session is None or file_path is None or not file_path.exists():
+        file_path = resolve_session_file_fallback(harness, artifact_id)
+        if file_path is None:
+            raise HTTPException(status_code=404, detail=f"Session artifact {harness}/{artifact_id} was not found.")
+        session = attach_session_route(parse_session_file(harness, file_path))
+
+    return build_session_detail_payload(session, file_path)
 
 
 def _run_latest_cli(request: Request) -> Dict[str, Any]:
@@ -127,6 +153,8 @@ def _run_latest_cli(request: Request) -> Dict[str, Any]:
             raise HTTPException(status_code=502, detail="Latest session CLI returned invalid JSON.") from exc
 
     if completed.returncode == 0 and payload is not None:
+        if payload.get("latest"):
+            payload["latest"] = attach_session_route(payload["latest"])
         log_event(
             logger,
             "info",
@@ -220,7 +248,7 @@ async def list_sessions(
         "total": total,
         "limit": limit,
         "offset": offset,
-        "sessions": sessions,
+        "sessions": [attach_session_route(session) for session in sessions],
     }
 
 
@@ -257,13 +285,29 @@ async def get_session(session_id: str, request: Request):
         agent_type=session.get("agent_type"),
     )
     
-    return session
+    return attach_session_route(session)
+
+
+@router.get("/session-artifacts/{harness}/{artifact_id}")
+async def get_session_artifact_detail(harness: str, artifact_id: str, request: Request):
+    """Return one rich session detail payload addressable by harness and stable route id."""
+    payload = await run_in_threadpool(_resolve_session_artifact, harness, artifact_id)
+    log_event(
+        logger,
+        "info",
+        "sessions.artifact.completed",
+        request_id=getattr(request.state, "request_id", ""),
+        harness=harness,
+        artifact_id=artifact_id,
+        session_id=(payload.get("session") or {}).get("session_id"),
+    )
+    return payload
 
 
 @router.get("/latest-session")
 async def get_latest_session(request: Request):
     """Return one global latest session from the nx-collect CLI."""
-    return _run_latest_cli(request)
+    return await run_in_threadpool(_run_latest_cli, request)
 
 
 @router.get("/metrics")
