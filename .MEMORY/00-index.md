@@ -15,6 +15,7 @@ Isolated CLI cards:
 - `12-provider-identity-and-model-awareness.md`
 - `13-e2e-smoke-visual-pipeline.md`
 - `14-extract-intent-cli.md`
+- `15-published-stability-runbook.md`
 
 Rule:
 - `.MEMORY` is the short operational memory layer.
