@@ -1,0 +1,14 @@
+{
+  "source": {
+    "path": "/home/pets/.codex/sessions/2026/03/12/rollout-demo.jsonl",
+    "format": "auto",
+    "harness_provider": "codex"
+  },
+  "question": {
+    "text": "Какая была главная цель этой сессии?",
+    "max_evidence_items": 3
+  },
+  "render": {
+    "pretty": false
+  }
+}

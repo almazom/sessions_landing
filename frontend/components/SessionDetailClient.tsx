@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import AuthPanel from '@/components/AuthPanel';
 import RichSessionCard from '@/components/RichSessionCard';
-import { api, ApiError, SessionArtifactResponse, SessionStateModel } from '@/lib/api';
+import { api, ApiError, SessionArtifactResponse, SessionAskResponse, SessionStateModel } from '@/lib/api';
 
 type AuthState = {
   authenticated: boolean;
@@ -147,6 +147,8 @@ const safetyModeClasses: Record<string, string> = {
   'ask-only': 'border-blue-200 bg-blue-50 text-blue-700',
   'resume-allowed': 'border-emerald-200 bg-emerald-50 text-emerald-700',
 };
+
+const DEFAULT_ASK_QUESTION = 'Какая была главная цель этой сессии?';
 
 function formatDetailedTimestamp(value: string): string {
   if (!value) {
@@ -310,6 +312,10 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authRevision, setAuthRevision] = useState(0);
+  const [askQuestion, setAskQuestion] = useState(DEFAULT_ASK_QUESTION);
+  const [askSubmitting, setAskSubmitting] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
+  const [askResult, setAskResult] = useState<SessionAskResponse | null>(null);
   const telegramWidgetRef = useRef<HTMLDivElement | null>(null);
 
   const loadDetail = useCallback(async () => {
@@ -355,6 +361,12 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
   useEffect(() => {
     void loadDetail();
   }, [authRevision, loadDetail]);
+
+  useEffect(() => {
+    setAskQuestion(DEFAULT_ASK_QUESTION);
+    setAskError(null);
+    setAskResult(null);
+  }, [decodedArtifactId, decodedHarness]);
 
   useEffect(() => {
     const container = telegramWidgetRef.current;
@@ -463,6 +475,30 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
         void completeTelegramLogin(result.id_token);
       },
     );
+  };
+
+  const handleAskSession = async () => {
+    if (!capabilities.can_ask) {
+      return;
+    }
+
+    const normalizedQuestion = askQuestion.trim();
+    if (!normalizedQuestion) {
+      setAskError('Введите вопрос к этой сессии.');
+      return;
+    }
+
+    setAskSubmitting(true);
+    setAskError(null);
+
+    try {
+      const result = await api.askSessionArtifact(decodedHarness, decodedArtifactId, normalizedQuestion);
+      setAskResult(result);
+    } catch (submitError) {
+      setAskError(getApiErrorMessage(submitError, 'Не удалось задать вопрос к этой сессии.'));
+    } finally {
+      setAskSubmitting(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -576,6 +612,9 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
   const linkedFiles = new Set(commitFileLinks.flatMap((entry) => entry.files.map((file) => file.path)));
   const unmatchedFiles = filesModified.filter((filePath) => !linkedFiles.has(filePath));
   const matrixTimelineItems = timelineEvents.slice(0, 4);
+  const futureActionsIntro = capabilities.can_ask
+    ? 'Ask flow уже работает в безопасном ask-only режиме. Resume остаётся safety-gated и не запускает скрытые runtime-действия.'
+    : 'Это безопасные placeholders. Они показывают roadmap detail page, но не запускают скрытые runtime-действия.';
 
   return (
     <main data-testid="session-detail-page" className="min-h-screen p-6">
@@ -1348,7 +1387,7 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     Будущие действия
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-nexus-600">
-                    Это безопасные placeholders. Они показывают roadmap detail page, но не запускают скрытые runtime-действия.
+                    {futureActionsIntro}
                   </p>
                 </div>
                 <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${safetyModeClasses[safetyMode] || safetyModeClasses['read-only']}`}>
@@ -1399,8 +1438,12 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     <h3 className="text-base font-semibold text-nexus-900">
                       Ask This Session
                     </h3>
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-                      placeholder
+                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                      capabilities.can_ask
+                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                        : 'border-amber-200 bg-amber-50 text-amber-700'
+                    }`}>
+                      {capabilities.can_ask ? 'ask-only live' : 'placeholder'}
                     </span>
                   </div>
                   <div className="text-sm leading-6 text-nexus-700">
@@ -1410,6 +1453,105 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     <div className="font-semibold">{askCapability.label}</div>
                     <div className="mt-1 text-nexus-600">{askCapability.detail}</div>
                   </div>
+                  {capabilities.can_ask ? (
+                    <div className="mt-3 rounded-2xl border border-nexus-200 bg-white px-3 py-3">
+                      <label className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                        Вопрос к artifact
+                      </label>
+                      <textarea
+                        data-testid="session-ask-input"
+                        value={askQuestion}
+                        onChange={(event) => {
+                          setAskQuestion(event.target.value);
+                          if (askError) {
+                            setAskError(null);
+                          }
+                        }}
+                        rows={3}
+                        className="mt-2 w-full rounded-2xl border border-nexus-200 bg-[#fbfdff] px-3 py-3 text-sm text-nexus-800 outline-none transition focus:border-blue-300"
+                        placeholder="Какая была главная цель этой сессии?"
+                      />
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-xs text-nexus-500">
+                          Локальный ask-only режим: answer + evidence excerpts, без изменения source file.
+                        </div>
+                        <button
+                          data-testid="session-ask-submit"
+                          type="button"
+                          onClick={() => {
+                            void handleAskSession();
+                          }}
+                          disabled={askSubmitting}
+                          className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+                        >
+                          {askSubmitting ? 'Спрашиваю…' : 'Ask'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {askError ? (
+                    <div
+                      data-testid="session-ask-error"
+                      className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700"
+                    >
+                      {askError}
+                    </div>
+                  ) : null}
+                  {askResult ? (
+                    <div
+                      data-testid="session-ask-result"
+                      className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-3 py-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-nexus-900">
+                          Ответ ask-only слоя
+                        </div>
+                        <div className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs text-emerald-700">
+                          confidence {Math.round(askResult.answer.confidence * 100)}%
+                        </div>
+                      </div>
+                      <div
+                        data-testid="session-ask-response-text"
+                        className="mt-3 text-sm leading-6 text-nexus-800"
+                      >
+                        {askResult.answer.response}
+                      </div>
+                      {askResult.answer.evidence.length > 0 ? (
+                        <div className="mt-3 grid gap-2">
+                          {askResult.answer.evidence.map((item, index) => (
+                            <div
+                              key={`${item.kind}-${index}`}
+                              data-testid={`session-ask-evidence-${index}`}
+                              className="rounded-2xl border border-emerald-200 bg-white px-3 py-3"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                                  {item.label}
+                                </div>
+                                <div className="text-xs text-nexus-500">
+                                  score {item.score}
+                                </div>
+                              </div>
+                              <div className="mt-2 text-sm leading-6 text-nexus-700 whitespace-pre-wrap break-words">
+                                {item.excerpt}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="mt-3 grid gap-2">
+                        {askResult.answer.limitations.map((item, index) => (
+                          <div
+                            key={`${index + 1}-${item}`}
+                            data-testid={`session-ask-limit-${index}`}
+                            className="rounded-2xl border border-nexus-200 bg-white px-3 py-2 text-xs text-nexus-600"
+                          >
+                            {item}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </article>
 
                 <article

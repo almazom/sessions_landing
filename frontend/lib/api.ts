@@ -233,6 +233,40 @@ export interface SessionArtifactResponse {
   session: SessionArtifactSummary;
 }
 
+export interface SessionAskEvidenceItem {
+  kind: 'user_message' | 'assistant_message' | 'timeline' | 'artifact_field';
+  label: string;
+  excerpt: string;
+  score: number;
+}
+
+export interface SessionAskResponse {
+  meta: {
+    tool: string;
+    tool_version: string;
+    generated_at: string;
+    answer_source: 'local_artifact';
+    reasoning_mode: 'lexical_evidence_match';
+  };
+  source: {
+    harness_provider?: string;
+    format: 'json' | 'jsonl';
+    record_count: number;
+    snippet_count: number;
+    user_message_count: number;
+  };
+  question: {
+    text: string;
+  };
+  answer: {
+    mode: 'ask-only';
+    response: string;
+    confidence: number;
+    evidence: SessionAskEvidenceItem[];
+    limitations: string[];
+  };
+}
+
 export interface AuthStatus {
   authenticated: boolean;
   password_required: boolean;
@@ -379,6 +413,17 @@ class ApiClient {
   async getSessionArtifact(harness: string, artifactId: string): Promise<SessionArtifactResponse> {
     return this.fetch<SessionArtifactResponse>(
       `/api/session-artifacts/${encodeURIComponent(harness)}/${encodeURIComponent(artifactId)}`,
+    );
+  }
+
+  async askSessionArtifact(harness: string, artifactId: string, question: string): Promise<SessionAskResponse> {
+    return this.fetch<SessionAskResponse>(
+      `/api/session-artifacts/${encodeURIComponent(harness)}/${encodeURIComponent(artifactId)}/ask`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      },
     );
   }
 

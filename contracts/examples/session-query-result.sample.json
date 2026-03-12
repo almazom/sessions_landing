@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "tool": "nx-session-query",
+    "tool_version": "1.0.0",
+    "generated_at": "2026-03-12T09:00:00Z",
+    "answer_source": "local_artifact",
+    "reasoning_mode": "lexical_evidence_match"
+  },
+  "source": {
+    "harness_provider": "codex",
+    "format": "jsonl",
+    "record_count": 42,
+    "snippet_count": 18,
+    "user_message_count": 6
+  },
+  "question": {
+    "text": "Какая была главная цель этой сессии?"
+  },
+  "answer": {
+    "mode": "ask-only",
+    "response": "По локальным сигналам из artifact, главный фокус был на том, чтобы усилить detail page и связать narrative с evidence.",
+    "confidence": 0.74,
+    "evidence": [
+      {
+        "kind": "user_message",
+        "label": "User message",
+        "excerpt": "починить detail page и добавить evidence matrix",
+        "score": 9
+      },
+      {
+        "kind": "timeline",
+        "label": "Timeline · tool_call",
+        "excerpt": "rg evidence matrix",
+        "score": 5
+      }
+    ],
+    "limitations": [
+      "Ответ собран локально по text overlap и не использует внешний AI provider.",
+      "Source artifact не меняется; это ask-only слой поверх файла."
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "session-query-request.schema.json",
+  "title": "SessionQueryRequest",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "source",
+    "question",
+    "render"
+  ],
+  "properties": {
+    "source": {
+      "type": "object",
+      "required": [
+        "path",
+        "format"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "json",
+            "jsonl"
+          ]
+        },
+        "harness_provider": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "question": {
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 3
+        },
+        "max_evidence_items": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "additionalProperties": false
+    },
+    "render": {
+      "type": "object",
+      "required": [
+        "pretty"
+      ],
+      "properties": {
+        "pretty": {
+          "type": "boolean"
+        },
+        "output_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

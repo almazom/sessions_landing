@@ -10,6 +10,8 @@
   },
   "docs": {
     "profile": "PROFILE.md",
+    "high_level_expectations": "docs/product/HIGH_LEVEL_EXPECTATIONS.md",
+    "docs_index": "docs/README.md",
     "aura": "AURA.md",
     "aura_latest": ".aura/latest/AURA.md",
     "aura_dir": ".aura/",
@@ -78,6 +80,24 @@
       ],
       "consumed_by": [],
       "description": "Easy-to-read semantic intent result produced for one session file"
+    },
+    "session-query-request": {
+      "file": "contracts/session-query-request.schema.json",
+      "version": "1.0.0",
+      "produced_by": [],
+      "consumed_by": [
+        "nx-session-query"
+      ],
+      "description": "Request model for a safe ask-only query over one session artifact"
+    },
+    "session-query-result": {
+      "file": "contracts/session-query-result.schema.json",
+      "version": "1.0.0",
+      "produced_by": [
+        "nx-session-query"
+      ],
+      "consumed_by": [],
+      "description": "Structured local answer with evidence excerpts over one session artifact"
     }
   },
   "tools": {
@@ -104,6 +124,14 @@
       "output_contract": "intent-extract-result@1.4.0",
       "description": "Dedicated user-facing CLI for 3-7 semantic Russian intent steps over one session file",
       "stateless": true
+    },
+    "nx-session-query": {
+      "manifest": "tools/nx-session-query/MANIFEST.json",
+      "position": 4,
+      "input_contract": "session-query-request@1.0.0",
+      "output_contract": "session-query-result@1.0.0",
+      "description": "Safe ask-only local query over one JSON or JSONL session artifact",
+      "stateless": true
     }
   },
   "memory": {
@@ -117,7 +145,12 @@
       ".MEMORY/08-jsonl-cognitive-contracts.md",
       ".MEMORY/09-session-management-workflow.md",
       ".MEMORY/10-session-collect-cli.md",
-      ".MEMORY/11-latest-session-shell-tips.md"
+      ".MEMORY/11-latest-session-shell-tips.md",
+      ".MEMORY/12-provider-identity-and-model-awareness.md",
+      ".MEMORY/13-e2e-smoke-visual-pipeline.md",
+      ".MEMORY/14-extract-intent-cli.md",
+      ".MEMORY/15-published-stability-runbook.md",
+      ".MEMORY/16-session-query-cli.md"
     ]
   }
 }

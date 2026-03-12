@@ -321,7 +321,7 @@
     {
       "id": "T8",
       "title": "Prepare real ask and resume flows behind the placeholders",
-      "state": "TODO",
+      "state": "DONE",
       "phase": "later",
       "details": [
         "Implement the first real headless question flow over a session artifact.",
@@ -330,7 +330,7 @@
       ],
       "context": {
         "why": "The page should eventually become an operational hub, not only an archive.",
-        "current_gap": "No ask or resume backend flow exists yet; only placeholders are currently justified.",
+        "current_gap": "The ask-only query flow is now real and evidence-backed; resume remains intentionally safety-gated until a harness-specific continue workflow exists.",
         "ssot_refs": [
           "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Headless Query Expectation",
           "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Session As Action Surface",

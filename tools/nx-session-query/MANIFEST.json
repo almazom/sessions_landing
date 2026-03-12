@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tools/nx-session-query/MANIFEST.json",
+  "title": "nx-session-query Tool Manifest",
+  "version": "1.0.0",
+  "identity": {
+    "name": "nx-session-query",
+    "description": "Ask one safe local question over one JSON or JSONL session artifact",
+    "stateless": true
+  },
+  "contracts": {
+    "input": "session-query-request@1.0.0",
+    "output": "session-query-result@1.0.0"
+  },
+  "cli": {
+    "usage": "tools/nx-session-query/nx-session-query --input <FILE> --question <TEXT> [--pretty]",
+    "flags": [
+      {
+        "name": "--input",
+        "short": "-i",
+        "type": "string",
+        "required": true,
+        "description": "Path to one JSON or JSONL session artifact"
+      },
+      {
+        "name": "--question",
+        "short": "-q",
+        "type": "string",
+        "required": true,
+        "description": "Safe ask-only question over the artifact"
+      },
+      {
+        "name": "--harness-provider",
+        "type": "string",
+        "description": "Optional harness provider alias such as codex or gemini"
+      },
+      {
+        "name": "--format",
+        "type": "string",
+        "default": "auto",
+        "description": "Source format: auto, json, jsonl"
+      },
+      {
+        "name": "--max-evidence-items",
+        "type": "integer",
+        "default": 3,
+        "description": "How many evidence excerpts to keep, 1-5"
+      },
+      {
+        "name": "--pretty",
+        "type": "boolean",
+        "default": false,
+        "description": "Render a compact terminal view instead of JSON"
+      },
+      {
+        "name": "--output",
+        "short": "-o",
+        "type": "string",
+        "default": "stdout",
+        "description": "Output path for JSON or pretty text"
+      },
+      {
+        "name": "--version",
+        "type": "boolean",
+        "description": "Show tool version"
+      }
+    ],
+    "exit_codes": {
+      "0": "Success",
+      "1": "Internal error",
+      "2": "Invalid arguments or missing input file",
+      "4": "Parse failure or contract violation"
+    }
+  },
+  "files": {
+    "required": [
+      "main.py",
+      "nx-session-query"
+    ]
+  }
+}

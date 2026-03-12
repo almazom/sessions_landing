@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from backend.api.logging_utils import get_logger, log_event
@@ -25,12 +26,18 @@ logger = get_logger("agent_nexus.sessions")
 REPO_ROOT = Path(__file__).resolve().parents[3]
 NX_COLLECT_PATH = REPO_ROOT / "tools" / "nx-collect" / "nx-collect"
 NX_COLLECT_TIMEOUT_SECONDS = 40
+SESSION_QUERY_CLI_PATH = REPO_ROOT / "tools" / "nx-session-query" / "nx-session-query"
+SESSION_QUERY_TIMEOUT_SECONDS = 20
 
 router = APIRouter(
     prefix="/api",
     tags=["Sessions"],
     dependencies=[Depends(get_current_user)],
 )
+
+
+class SessionAskRequest(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
 
 
 def _session_changed_timestamp(session: dict) -> str:
@@ -58,7 +65,7 @@ def _ensure_sessions_loaded() -> None:
         session_scanner.ensure_loaded()
 
 
-def _resolve_session_artifact(harness: str, artifact_id: str) -> Dict[str, Any]:
+def _resolve_session_artifact_source(harness: str, artifact_id: str) -> tuple[Dict[str, Any], Path]:
     _ensure_sessions_loaded()
     session, file_path = resolve_session_file_from_store(session_store.get_all(), harness, artifact_id)
 
@@ -68,7 +75,134 @@ def _resolve_session_artifact(harness: str, artifact_id: str) -> Dict[str, Any]:
             raise HTTPException(status_code=404, detail=f"Session artifact {harness}/{artifact_id} was not found.")
         session = attach_session_route(parse_session_file(harness, file_path))
 
-    return build_session_detail_payload(session, file_path)
+    return session, file_path
+
+
+def _resolve_session_artifact(harness: str, artifact_id: str) -> Dict[str, Any]:
+    session, file_path = _resolve_session_artifact_source(harness, artifact_id)
+    session_payload = dict(session)
+    session_payload["query_enabled"] = bool(session_payload.get("query_enabled")) or SESSION_QUERY_CLI_PATH.exists()
+    return build_session_detail_payload(session_payload, file_path)
+
+
+def _validate_session_query_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    required = {"meta", "source", "question", "answer"}
+    missing = required.difference(payload.keys())
+    if missing:
+        raise ValueError(f"session query payload missing keys: {', '.join(sorted(missing))}")
+    return payload
+
+
+def _run_session_query_cli(
+    harness: str,
+    artifact_id: str,
+    question: str,
+    request: Request,
+) -> Dict[str, Any]:
+    request_id = getattr(request.state, "request_id", "")
+
+    if not SESSION_QUERY_CLI_PATH.exists():
+        log_event(
+            logger,
+            "error",
+            "sessions.ask.cli_missing",
+            request_id=request_id,
+            cli_path=str(SESSION_QUERY_CLI_PATH),
+        )
+        raise HTTPException(status_code=500, detail="Session query CLI is not available.")
+
+    session, file_path = _resolve_session_artifact_source(harness, artifact_id)
+    command = [
+        str(SESSION_QUERY_CLI_PATH),
+        "--input",
+        str(file_path),
+        "--question",
+        question,
+        "--harness-provider",
+        str(session.get("agent_type") or harness),
+    ]
+
+    log_event(
+        logger,
+        "info",
+        "sessions.ask.cli_started",
+        request_id=request_id,
+        command=command,
+        timeout_seconds=SESSION_QUERY_TIMEOUT_SECONDS,
+        harness=harness,
+        artifact_id=artifact_id,
+    )
+
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=SESSION_QUERY_TIMEOUT_SECONDS,
+            cwd=REPO_ROOT,
+        )
+    except subprocess.TimeoutExpired as exc:
+        log_event(
+            logger,
+            "error",
+            "sessions.ask.cli_timeout",
+            request_id=request_id,
+            timeout_seconds=SESSION_QUERY_TIMEOUT_SECONDS,
+            harness=harness,
+            artifact_id=artifact_id,
+        )
+        raise HTTPException(status_code=504, detail="Session ask flow timed out.") from exc
+    except OSError as exc:
+        log_event(
+            logger,
+            "error",
+            "sessions.ask.cli_failed_to_start",
+            request_id=request_id,
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+        )
+        raise HTTPException(status_code=500, detail="Failed to start session query CLI.") from exc
+
+    stdout = completed.stdout.strip()
+    stderr = completed.stderr.strip()
+    if stderr:
+        log_event(
+            logger,
+            "warning" if completed.returncode == 0 else "error",
+            "sessions.ask.cli_stderr",
+            request_id=request_id,
+            return_code=completed.returncode,
+            stderr=_format_cli_error(stderr),
+        )
+
+    if completed.returncode != 0:
+        detail = stderr or stdout or "Session query CLI failed."
+        raise HTTPException(status_code=502, detail=_format_cli_error(detail))
+
+    try:
+        payload = _validate_session_query_payload(json.loads(stdout))
+    except (json.JSONDecodeError, ValueError) as exc:
+        log_event(
+            logger,
+            "error",
+            "sessions.ask.cli_invalid_json",
+            request_id=request_id,
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+        )
+        raise HTTPException(status_code=502, detail="Session query CLI returned invalid JSON.") from exc
+
+    log_event(
+        logger,
+        "info",
+        "sessions.ask.cli_completed",
+        request_id=request_id,
+        harness=harness,
+        artifact_id=artifact_id,
+        confidence=((payload.get("answer") or {}).get("confidence")),
+    )
+    return payload
 
 
 def _run_latest_cli(request: Request) -> Dict[str, Any]:
@@ -302,6 +436,26 @@ async def get_session_artifact_detail(harness: str, artifact_id: str, request: R
         session_id=(payload.get("session") or {}).get("session_id"),
     )
     return payload
+
+
+@router.post("/session-artifacts/{harness}/{artifact_id}/ask")
+async def ask_session_artifact(
+    harness: str,
+    artifact_id: str,
+    payload: SessionAskRequest,
+    request: Request,
+):
+    """Run the safe ask-only query flow for one session artifact."""
+    result = await run_in_threadpool(_run_session_query_cli, harness, artifact_id, payload.question, request)
+    log_event(
+        logger,
+        "info",
+        "sessions.ask.completed",
+        request_id=getattr(request.state, "request_id", ""),
+        harness=harness,
+        artifact_id=artifact_id,
+    )
+    return result
 
 
 @router.get("/latest-session")

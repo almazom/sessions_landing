@@ -9,6 +9,7 @@ Current contract chain:
 CLI flags / request JSON -> session-collect-request -> nx-collect -> session-collect-result
 CLI flags / request JSON -> jsonl-cognitive-request -> nx-cognize -> jsonl-cognitive-result
 CLI flags / request JSON -> intent-extract-request -> extract-intent -> intent-extract-result
+CLI flags / request JSON -> session-query-request -> nx-session-query -> session-query-result
 ```
 
 Rules:
@@ -24,3 +25,5 @@ Current contracts:
 - `jsonl-cognitive-result`
 - `intent-extract-request`
 - `intent-extract-result`
+- `session-query-request`
+- `session-query-result`

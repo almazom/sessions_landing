@@ -173,6 +173,38 @@ type SessionArtifactPayload = {
   };
 };
 
+type SessionAskPayload = {
+  meta: {
+    tool: string;
+    tool_version: string;
+    generated_at: string;
+    answer_source: 'local_artifact';
+    reasoning_mode: 'lexical_evidence_match';
+  };
+  source: {
+    harness_provider?: string;
+    format: 'json' | 'jsonl';
+    record_count: number;
+    snippet_count: number;
+    user_message_count: number;
+  };
+  question: {
+    text: string;
+  };
+  answer: {
+    mode: 'ask-only';
+    response: string;
+    confidence: number;
+    evidence: Array<{
+      kind: 'user_message' | 'assistant_message' | 'timeline' | 'artifact_field';
+      label: string;
+      excerpt: string;
+      score: number;
+    }>;
+    limitations: string[];
+  };
+};
+
 type AuthStatusPayload = {
   authenticated: boolean;
   password_required: boolean;
@@ -333,6 +365,7 @@ async function mockDashboardApis(
     sessions: SessionsPayload;
     metrics: MetricsPayload;
     detail?: SessionArtifactPayload;
+    ask?: SessionAskPayload;
   },
 ): Promise<void> {
   await page.route('**/api/auth/status', async (route) => {
@@ -365,6 +398,26 @@ async function mockDashboardApis(
 
   if (payloads.detail) {
     await page.route(`**${SESSION_ARTIFACTS_API_PATH}/**`, async (route) => {
+      const request = route.request();
+      const isAskRequest = request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/ask');
+
+      if (isAskRequest) {
+        if (!payloads.ask) {
+          await route.fulfill({
+            status: 404,
+            contentType: 'application/json',
+            body: JSON.stringify({ detail: 'Ask flow is not mocked for this test.' }),
+          });
+          return;
+        }
+
+        await route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify(payloads.ask),
+        });
+        return;
+      }
+
       await route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify(payloads.detail),
@@ -1031,6 +1084,245 @@ test.describe('Published URL end-to-end', () => {
     await expect(page.getByTestId('evidence-sparsity-notice')).toHaveCount(0);
     await expect(page.getByTestId('future-action-ask')).toContainText('Ask This Session');
     await expect(page.getByTestId('future-action-resume')).toContainText('Continue / Resume Session');
+  });
+
+  test('detail page runs the ask-only flow and renders evidence-backed answer', async ({ page }) => {
+    await mockDashboardApis(page, {
+      latest: {
+        meta: {
+          scanned_providers: 6,
+          scanned_files: 1,
+        },
+        query: {
+          timezone: 'Europe/Moscow',
+        },
+        latest: {
+          provider: 'codex',
+          path: '/home/pets/.codex/sessions/2026/03/12/rollout-ask.jsonl',
+          relative_path: '2026/03/12/rollout-ask.jsonl',
+          filename: 'rollout-ask.jsonl',
+          session_id: 'session-ask',
+          format: 'jsonl',
+          modified_at: '2026-03-12T08:05:00+00:00',
+          modified_at_local: '2026-03-12 11:05:00 MSK',
+          modified_human: 'today at 11:05',
+          age_seconds: 30,
+          age_human: '30 sec ago',
+          activity_state: 'active',
+          record_count: 7,
+          parse_errors: 0,
+          user_message_count: 3,
+          first_user_message: 'починить detail page и добавить ask-only flow',
+          last_user_message: 'покажи evidence excerpts',
+          intent_evolution: ['починить detail page', 'добавить ask-only flow'],
+          route: {
+            harness: 'codex',
+            id: 'rollout-ask.jsonl',
+            href: '/sessions/codex/rollout-ask.jsonl',
+          },
+        },
+        errors: [],
+      },
+      sessions: {
+        total: 1,
+        limit: 100,
+        offset: 0,
+        sessions: [
+          {
+            session_id: 'session-ask',
+            agent_type: 'codex',
+            status: 'completed',
+            source_file: '/home/pets/.codex/sessions/2026/03/12/rollout-ask.jsonl',
+            route: {
+              harness: 'codex',
+              id: 'rollout-ask.jsonl',
+              href: '/sessions/codex/rollout-ask.jsonl',
+            },
+          },
+        ],
+      },
+      metrics: {
+        success: true,
+        data: {
+          total_sessions: 1,
+          by_agent: { codex: 1 },
+          by_status: { completed: 1 },
+          total_tokens: 420,
+          last_updated: '2026-03-12T08:06:00Z',
+        },
+      },
+      detail: {
+        meta: {
+          timezone: 'Europe/Moscow',
+          live_within_minutes: 10,
+          active_within_minutes: 60,
+        },
+        session: {
+          provider: 'codex',
+          path: '/home/pets/.codex/sessions/2026/03/12/rollout-ask.jsonl',
+          filename: 'rollout-ask.jsonl',
+          session_id: 'session-ask',
+          cwd: '/home/pets/zoo/agents_sessions_dashboard',
+          first_user_message: 'починить detail page и добавить ask-only flow',
+          last_user_message: 'покажи evidence excerpts',
+          user_messages: [
+            'починить detail page и добавить ask-only flow',
+            'связать вопрос с локальным query layer',
+            'покажи evidence excerpts',
+          ],
+          started_at: '2026-03-12T08:00:00+00:00',
+          started_at_local: '2026-03-12 11:00:00 MSK',
+          ended_at: '2026-03-12T08:05:00+00:00',
+          ended_at_local: '2026-03-12 11:05:00 MSK',
+          duration_seconds: 300,
+          duration_human: '5 мин',
+          time_window: {
+            source: 'session_artifact',
+            started_at: '2026-03-12T08:00:00+00:00',
+            started_at_local: '2026-03-12 11:00:00 MSK',
+            ended_at: '2026-03-12T08:05:00+00:00',
+            ended_at_local: '2026-03-12 11:05:00 MSK',
+            duration_seconds: 300,
+            duration_human: '5 мин',
+            scope_summary: 'Коммиты, files modified и timeline ниже читаются только внутри этого окна сессии.',
+          },
+          message_anchors: {
+            first: 'починить detail page и добавить ask-only flow',
+            middle: ['связать вопрос с локальным query layer'],
+            last: 'покажи evidence excerpts',
+          },
+          intent_evolution: ['починить detail page', 'добавить ask-only flow'],
+          topic_threads: ['detail page', 'ask flow', 'evidence excerpts'],
+          state_model: {
+            labels: ['archived', 'queryable'],
+            safety_mode: 'ask-only',
+            summary: 'Сессия доступна как безопасный queryable artifact: ask flow уже работает поверх локального source.',
+            rationale: [
+              'Source artifact остаётся read-only.',
+              'Ask flow использует отдельный local query layer.',
+              'Resume остаётся выключенным до harness-specific safety checks.',
+            ],
+            capabilities: {
+              can_ask: true,
+              can_resume: false,
+              can_restore: false,
+            },
+            ask_session: {
+              available: true,
+              label: 'Query layer доступен',
+              detail: 'Можно задать вопрос к artifact и получить ответ с evidence excerpts.',
+            },
+            resume_session: {
+              available: false,
+              label: 'Пока не разрешено',
+              detail: 'Resume остаётся safety-gated до явного harness flow.',
+            },
+          },
+          evidence_sparsity: {
+            is_sparse: false,
+            summary: 'Есть user messages, timeline и repo signals для безопасного ask-only ответа.',
+            present_layers: ['user messages', 'artifact timeline', 'files modified'],
+            missing_layers: ['git commits'],
+          },
+          route: {
+            harness: 'codex',
+            id: 'rollout-ask.jsonl',
+            href: '/sessions/codex/rollout-ask.jsonl',
+          },
+          tool_calls: ['exec_command'],
+          files_modified: ['frontend/components/SessionDetailClient.tsx'],
+          git_repository_root: '/home/pets/zoo/agents_sessions_dashboard',
+          git_commits: [],
+          token_usage: {
+            total_tokens: 420,
+            input_tokens: 220,
+            output_tokens: 200,
+          },
+          timeline: [
+            {
+              timestamp: '2026-03-12T08:00:00+00:00',
+              event_type: 'user_message',
+              description: 'починить detail page и добавить ask-only flow',
+              icon: '💬',
+            },
+            {
+              timestamp: '2026-03-12T08:03:00+00:00',
+              event_type: 'tool_call',
+              description: 'rg session query',
+              icon: '🛠',
+            },
+          ],
+        },
+      },
+      ask: {
+        meta: {
+          tool: 'nx-session-query',
+          tool_version: '1.0.0',
+          generated_at: '2026-03-12T08:06:00Z',
+          answer_source: 'local_artifact',
+          reasoning_mode: 'lexical_evidence_match',
+        },
+        source: {
+          harness_provider: 'codex',
+          format: 'jsonl',
+          record_count: 7,
+          snippet_count: 5,
+          user_message_count: 3,
+        },
+        question: {
+          text: 'Какая была главная цель этой сессии?',
+        },
+        answer: {
+          mode: 'ask-only',
+          response: 'Главный фокус этой сессии: починить detail page и добавить ask-only flow с evidence excerpts.',
+          confidence: 0.94,
+          evidence: [
+            {
+              kind: 'user_message',
+              label: 'User message',
+              excerpt: 'починить detail page и добавить ask-only flow',
+              score: 12,
+            },
+            {
+              kind: 'user_message',
+              label: 'User message',
+              excerpt: 'покажи evidence excerpts',
+              score: 8,
+            },
+          ],
+          limitations: [
+            'Ответ собран локально из artifact и lexical overlap, без внешних repo joins.',
+          ],
+        },
+      },
+    });
+
+    await page.goto('/sessions/codex/rollout-ask.jsonl', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    await expect(page.getByTestId('session-detail-page')).toBeVisible();
+    await expect(page.getByTestId('future-actions')).toContainText('Ask flow уже работает в безопасном ask-only режиме');
+    await expect(page.getByTestId('future-action-ask')).toContainText('ask-only live');
+    await expect(page.getByTestId('session-ask-input')).toHaveValue('Какая была главная цель этой сессии?');
+
+    const askRequestPromise = page.waitForRequest((request) => (
+      request.method() === 'POST'
+      && request.url().includes('/api/session-artifacts/codex/rollout-ask.jsonl/ask')
+    ));
+
+    await page.getByTestId('session-ask-submit').click();
+
+    const askRequest = await askRequestPromise;
+    expect(askRequest.postDataJSON()).toEqual({
+      question: 'Какая была главная цель этой сессии?',
+    });
+
+    await expect(page.getByTestId('session-ask-result')).toBeVisible();
+    await expect(page.getByTestId('session-ask-response-text')).toContainText('Главный фокус этой сессии');
+    await expect(page.getByTestId('session-ask-evidence-0')).toContainText('починить detail page и добавить ask-only flow');
+    await expect(page.getByTestId('session-ask-limit-0')).toContainText('lexical overlap');
+    await expect(page.getByTestId('future-action-resume')).toContainText('Пока не разрешено');
   });
 
   test('detail page shows sparse evidence cue and archived state for idle artifacts', async ({ page }) => {
