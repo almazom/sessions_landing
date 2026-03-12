@@ -18,6 +18,12 @@ type SessionRecord = {
   session_id: string;
   agent_type: string;
   status: string;
+  source_file?: string;
+  route?: {
+    harness: string;
+    id: string;
+    href: string;
+  };
 };
 
 type SessionsPayload = {
@@ -60,10 +66,67 @@ type LatestSessionPayload = {
     intent_evolution?: string[];
     intent_summary_source?: 'ai' | 'local_fallback';
     intent_summary_provider?: string;
+    route?: {
+      harness: string;
+      id: string;
+      href: string;
+    };
   } | null;
   errors: Array<{
     detail: string;
   }>;
+};
+
+type SessionArtifactPayload = {
+  meta: {
+    timezone: string;
+    live_within_minutes: number;
+    active_within_minutes: number;
+  };
+  session: {
+    provider: string;
+    path: string;
+    filename: string;
+    session_id: string;
+    cwd: string;
+    first_user_message: string;
+    last_user_message: string;
+    user_messages?: string[];
+    message_anchors?: {
+      first: string;
+      middle: string[];
+      last: string;
+    };
+    intent_evolution: string[];
+    route: {
+      harness: string;
+      id: string;
+      href: string;
+    };
+    tool_calls: string[];
+    files_modified: string[];
+    git_repository_root?: string | null;
+    git_commits?: Array<{
+      hash: string;
+      short_hash: string;
+      title: string;
+      author_name: string;
+      committed_at: string;
+      committed_at_local?: string;
+    }>;
+    token_usage: {
+      total_tokens: number;
+      input_tokens: number;
+      output_tokens: number;
+    };
+    timeline?: Array<{
+      timestamp: string;
+      event_type: string;
+      description: string;
+      icon?: string;
+      details?: string | null;
+    }>;
+  };
 };
 
 type AuthStatusPayload = {
@@ -88,7 +151,19 @@ const LOADING_INDICATOR_TEXT = '⏳ Загрузка...';
 const METRICS_API_PATH = '/api/metrics';
 const SESSIONS_API_PATH = '/api/sessions';
 const LATEST_API_PATH = '/api/latest-session';
+const SESSION_ARTIFACTS_API_PATH = '/api/session-artifacts';
 const PREFERRED_AGENT_ORDER = ['qwen', 'codex', 'pi', 'kimi', 'claude', 'gemini'];
+const AUTHENTICATED_STATUS = {
+  authenticated: true,
+  password_required: false,
+  auth_required: false,
+  password_enabled: false,
+  telegram_enabled: false,
+  telegram_configured: false,
+  telegram_client_id: null,
+  telegram_request_phone: false,
+  auth_method: 'none',
+};
 
 function getRootEnvValue(name: string): string {
   const envPath = path.resolve(process.cwd(), '..', '.env');
@@ -147,6 +222,10 @@ function isSuccessfulApiResponse(
     && requiredFragments.every((fragment) => url.includes(fragment));
 }
 
+function isIgnorableRequestFailure(url: string, error: string): boolean {
+  return error === 'net::ERR_ABORTED' && url.includes('_rsc=');
+}
+
 async function expectJson<T>(responsePromise: Promise<Response>): Promise<T> {
   const response = await responsePromise;
   expect(response.ok()).toBeTruthy();
@@ -169,10 +248,14 @@ async function gotoDashboard(page: Page): Promise<DashboardVisit> {
   const failedRequests: FailedRequest[] = [];
 
   page.on('requestfailed', (request) => {
+    const error = request.failure()?.errorText || 'unknown';
+    if (isIgnorableRequestFailure(request.url(), error)) {
+      return;
+    }
     failedRequests.push({
       method: request.method(),
       url: request.url(),
-      error: request.failure()?.errorText || 'unknown',
+      error,
     });
   });
 
@@ -190,22 +273,60 @@ async function gotoDashboard(page: Page): Promise<DashboardVisit> {
 async function expectLoadedDashboard(page: Page): Promise<void> {
   await expect(page.getByText(LOADING_INDICATOR_TEXT)).toHaveCount(0);
   await expect(page.getByTestId('latest-session-card')).toBeVisible();
-  await expect(page.getByTestId('latest-only-hint')).toBeVisible();
-  await expect(page.getByTestId('metric-total-sessions-card')).toHaveCount(0);
+  await expect(page.getByTestId('latest-only-hint')).toHaveCount(0);
+  await expect(page.getByTestId('metric-total-sessions-card')).toBeVisible();
 }
 
 async function expandDashboard(page: Page): Promise<void> {
-  const sessionsResponsePromise = page.waitForResponse((response) => {
-    return isSuccessfulApiResponse(response, SESSIONS_API_PATH);
-  });
-  const metricsResponsePromise = page.waitForResponse((response) => {
-    return isSuccessfulApiResponse(response, METRICS_API_PATH);
-  });
-
-  await page.getByTestId('date-filter').selectOption('all');
-  await Promise.all([sessionsResponsePromise, metricsResponsePromise]);
   await expect(page.getByTestId('metric-total-sessions-value')).toBeVisible();
   await expectDashboardContent(page);
+}
+
+async function mockDashboardApis(
+  page: Page,
+  payloads: {
+    latest: LatestSessionPayload;
+    sessions: SessionsPayload;
+    metrics: MetricsPayload;
+    detail?: SessionArtifactPayload;
+  },
+): Promise<void> {
+  await page.route('**/api/auth/status', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(AUTHENTICATED_STATUS),
+    });
+  });
+
+  await page.route('**/api/latest-session', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(payloads.latest),
+    });
+  });
+
+  await page.route('**/api/sessions**', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(payloads.sessions),
+    });
+  });
+
+  await page.route('**/api/metrics', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(payloads.metrics),
+    });
+  });
+
+  if (payloads.detail) {
+    await page.route(`**${SESSION_ARTIFACTS_API_PATH}/**`, async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(payloads.detail),
+      });
+    });
+  }
 }
 
 async function maybeAuthenticateThroughUi(
@@ -345,38 +466,34 @@ test.describe('Published URL end-to-end', () => {
   });
 
   test('renders a valid empty dashboard when the API returns no sessions', async ({ page }) => {
-    await page.route('**/api/auth/status', async (route) => {
-      await route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          authenticated: true,
-          password_required: false,
-          auth_required: false,
-          password_enabled: false,
-          telegram_enabled: false,
-          telegram_configured: false,
-          telegram_client_id: null,
-          telegram_request_phone: false,
-          auth_method: 'none',
-        }),
-      });
-    });
-
-    await page.route('**/api/latest-session', async (route) => {
-      await route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          meta: {
-            scanned_providers: 6,
-            scanned_files: 0,
-          },
-          query: {
-            timezone: 'Europe/Moscow',
-          },
-          latest: null,
-          errors: [],
-        } satisfies LatestSessionPayload),
-      });
+    await mockDashboardApis(page, {
+      latest: {
+        meta: {
+          scanned_providers: 6,
+          scanned_files: 0,
+        },
+        query: {
+          timezone: 'Europe/Moscow',
+        },
+        latest: null,
+        errors: [],
+      },
+      sessions: {
+        total: 0,
+        limit: 100,
+        offset: 0,
+        sessions: [],
+      },
+      metrics: {
+        success: true,
+        data: {
+          total_sessions: 0,
+          by_agent: {},
+          by_status: {},
+          total_tokens: 0,
+          last_updated: '2026-03-12T00:00:00Z',
+        },
+      },
     });
 
     await page.goto('/', {
@@ -385,74 +502,206 @@ test.describe('Published URL end-to-end', () => {
 
     await expect(page.getByText(LOADING_INDICATOR_TEXT)).toHaveCount(0);
     await expect(page.getByTestId('latest-session-empty')).toBeVisible();
-    await expect(page.getByTestId('latest-only-hint')).toBeVisible();
-    await expect(page.getByTestId('empty-state')).toHaveCount(0);
+    await expect(page.getByTestId('latest-only-hint')).toHaveCount(0);
+    await expect(page.getByTestId('metric-total-sessions-value')).toHaveText('0');
+    await expect(page.getByTestId('empty-state')).toBeVisible();
     await expect(page.locator('[data-testid$="-section-header"]')).toHaveCount(0);
   });
 
-  test('shows collapsed intent evolution and expands it on demand', async ({ page }) => {
-    await page.route('**/api/auth/status', async (route) => {
-      await route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          authenticated: true,
-          password_required: false,
-          auth_required: false,
-          password_enabled: false,
-          telegram_enabled: false,
-          telegram_configured: false,
-          telegram_client_id: null,
-          telegram_request_phone: false,
-          auth_method: 'none',
-        }),
-      });
+  test('shows default latest + today list without manual filter expansion', async ({ page }) => {
+    await mockDashboardApis(page, {
+      latest: {
+        meta: {
+          scanned_providers: 6,
+          scanned_files: 1,
+        },
+        query: {
+          timezone: 'Europe/Moscow',
+        },
+        latest: {
+          provider: 'codex',
+          path: '/home/pets/.codex/sessions/2026/03/10/rollout-demo.jsonl',
+          relative_path: '2026/03/10/rollout-demo.jsonl',
+          filename: 'rollout-demo.jsonl',
+          session_id: 'rollout-demo',
+          format: 'jsonl',
+          modified_at: '2026-03-10T08:50:16.071986+00:00',
+          modified_at_local: '2026-03-10 11:50:16 MSK',
+          modified_human: 'today at 11:50',
+          age_seconds: 1,
+          age_human: '1 second ago',
+          activity_state: 'live',
+          record_count: 42,
+          parse_errors: 0,
+          user_message_count: 4,
+          first_user_message: 'починить фильтр сегодня',
+          last_user_message: 'усилить playwright проверку',
+          started_at: '2026-03-10T08:00:00+00:00',
+          started_at_local: '2026-03-10 11:00:00 MSK',
+          duration_seconds: 9000,
+          duration_human: '2 ч 30 мин',
+          intent_summary_source: 'ai',
+          intent_summary_provider: 'qwen',
+          intent_evolution: [
+            'починить фильтр сегодня',
+            'исправить latest карточку',
+            'показать полный путь файла',
+            'усилить playwright проверку',
+          ],
+          route: {
+            harness: 'codex',
+            id: 'rollout-demo.jsonl',
+            href: '/sessions/codex/rollout-demo.jsonl',
+          },
+        },
+        errors: [],
+      },
+      sessions: {
+        total: 2,
+        limit: 100,
+        offset: 0,
+        sessions: [
+          {
+            session_id: 'second-session',
+            agent_type: 'codex',
+            agent_name: 'Codex',
+            cwd: '/home/pets/zoo/agents_sessions_dashboard',
+            timestamp_start: '2026-03-12T08:10:00+00:00',
+            status: 'active',
+            user_intent: 'подготовить detail page',
+            first_user_message: 'подготовить detail page',
+            last_user_message: 'сделать ссылку на сессию',
+            user_message_count: 4,
+            tool_calls: ['exec_command'],
+            token_usage: {
+              input_tokens: 100,
+              output_tokens: 80,
+              total_tokens: 180,
+            },
+            files_modified: [],
+            source_file: '/home/pets/.codex/sessions/2026/03/10/rollout-second.jsonl',
+            route: {
+              harness: 'codex',
+              id: 'rollout-second.jsonl',
+              href: '/sessions/codex/rollout-second.jsonl',
+            },
+          },
+          {
+            session_id: 'third-session',
+            agent_type: 'qwen',
+            agent_name: 'Qwen',
+            cwd: '/home/pets/zoo/agents_sessions_dashboard',
+            timestamp_start: '2026-03-12T08:00:00+00:00',
+            status: 'completed',
+            user_intent: 'закрыть баги published url',
+            first_user_message: 'закрыть баги published url',
+            last_user_message: 'проверить published smoke',
+            user_message_count: 2,
+            tool_calls: [],
+            token_usage: {
+              input_tokens: 50,
+              output_tokens: 40,
+              total_tokens: 90,
+            },
+            files_modified: [],
+            source_file: '/home/pets/.qwen/projects/demo/chats/third-session.jsonl',
+            route: {
+              harness: 'qwen',
+              id: 'third-session.jsonl',
+              href: '/sessions/qwen/third-session.jsonl',
+            },
+          },
+        ],
+      },
+      metrics: {
+        success: true,
+        data: {
+          total_sessions: 2,
+          by_agent: { codex: 1, qwen: 1 },
+          by_status: { active: 1, completed: 1 },
+          total_tokens: 3210,
+          last_updated: '2026-03-12T00:00:00Z',
+        },
+      },
     });
 
-    await page.route('**/api/latest-session', async (route) => {
-      await route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          meta: {
-            scanned_providers: 6,
-            scanned_files: 1,
+    await page.goto('/', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    await expect(page.getByText(LOADING_INDICATOR_TEXT)).toHaveCount(0);
+    await expect(page.getByTestId('latest-session-card')).toBeVisible();
+    await expect(page.getByTestId('metric-total-sessions-value')).toHaveText('2');
+    await expect(page.getByTestId('latest-only-hint')).toHaveCount(0);
+    await expect(page.getByTestId('session-card')).toHaveCount(2);
+    await expect(page.getByTestId('active-section')).toBeVisible();
+    await expect(page.getByTestId('completed-section')).toBeVisible();
+  });
+
+  test('shows collapsed intent evolution and expands it on demand', async ({ page }) => {
+    await mockDashboardApis(page, {
+      latest: {
+        meta: {
+          scanned_providers: 6,
+          scanned_files: 1,
+        },
+        query: {
+          timezone: 'Europe/Moscow',
+        },
+        latest: {
+          provider: 'codex',
+          path: '/home/pets/.codex/sessions/2026/03/10/rollout-demo.jsonl',
+          relative_path: '2026/03/10/rollout-demo.jsonl',
+          filename: 'rollout-demo.jsonl',
+          session_id: 'rollout-demo',
+          format: 'jsonl',
+          modified_at: '2026-03-10T08:50:16.071986+00:00',
+          modified_at_local: '2026-03-10 11:50:16 MSK',
+          modified_human: 'today at 11:50',
+          age_seconds: 1,
+          age_human: '1 second ago',
+          activity_state: 'live',
+          record_count: 42,
+          parse_errors: 0,
+          user_message_count: 4,
+          first_user_message: 'починить фильтр сегодня',
+          last_user_message: 'усилить playwright проверку',
+          started_at: '2026-03-10T08:00:00+00:00',
+          started_at_local: '2026-03-10 11:00:00 MSK',
+          duration_seconds: 9000,
+          duration_human: '2 ч 30 мин',
+          intent_summary_source: 'ai',
+          intent_summary_provider: 'qwen',
+          intent_evolution: [
+            'починить фильтр сегодня',
+            'исправить latest карточку',
+            'показать полный путь файла',
+            'усилить playwright проверку',
+          ],
+          route: {
+            harness: 'codex',
+            id: 'rollout-demo.jsonl',
+            href: '/sessions/codex/rollout-demo.jsonl',
           },
-          query: {
-            timezone: 'Europe/Moscow',
-          },
-          latest: {
-            provider: 'codex',
-            path: '/home/pets/.codex/sessions/2026/03/10/rollout-demo.jsonl',
-            relative_path: '2026/03/10/rollout-demo.jsonl',
-            filename: 'rollout-demo.jsonl',
-            session_id: 'rollout-demo',
-            format: 'jsonl',
-            modified_at: '2026-03-10T08:50:16.071986+00:00',
-            modified_at_local: '2026-03-10 11:50:16 MSK',
-            modified_human: 'today at 11:50',
-            age_seconds: 1,
-            age_human: '1 second ago',
-            activity_state: 'live',
-            record_count: 42,
-            parse_errors: 0,
-            user_message_count: 4,
-            first_user_message: 'починить фильтр сегодня',
-            last_user_message: 'усилить playwright проверку',
-            started_at: '2026-03-10T08:00:00+00:00',
-            started_at_local: '2026-03-10 11:00:00 MSK',
-            duration_seconds: 9000,
-            duration_human: '2 ч 30 мин',
-            intent_summary_source: 'ai',
-            intent_summary_provider: 'qwen',
-            intent_evolution: [
-              'починить фильтр сегодня',
-              'исправить latest карточку',
-              'показать полный путь файла',
-              'усилить playwright проверку',
-            ],
-          },
-          errors: [],
-        } satisfies LatestSessionPayload),
-      });
+        },
+        errors: [],
+      },
+      sessions: {
+        total: 0,
+        limit: 100,
+        offset: 0,
+        sessions: [],
+      },
+      metrics: {
+        success: true,
+        data: {
+          total_sessions: 0,
+          by_agent: {},
+          by_status: {},
+          total_tokens: 0,
+          last_updated: '2026-03-12T00:00:00Z',
+        },
+      },
     });
 
     await page.goto('/', {
@@ -473,6 +722,227 @@ test.describe('Published URL end-to-end', () => {
     await expect(page.getByTestId('latest-intent-toggle')).toHaveText('свернуть');
   });
 
+  test('session cards and latest card link to the artifact detail page', async ({ page }) => {
+    await mockDashboardApis(page, {
+      latest: {
+        meta: {
+          scanned_providers: 6,
+          scanned_files: 1,
+        },
+        query: {
+          timezone: 'Europe/Moscow',
+        },
+        latest: {
+          provider: 'codex',
+          path: '/home/pets/.codex/sessions/2026/03/10/rollout-demo.jsonl',
+          relative_path: '2026/03/10/rollout-demo.jsonl',
+          filename: 'rollout-demo.jsonl',
+          session_id: 'rollout-demo',
+          format: 'jsonl',
+          modified_at: '2026-03-10T08:50:16.071986+00:00',
+          modified_at_local: '2026-03-10 11:50:16 MSK',
+          modified_human: 'today at 11:50',
+          age_seconds: 1,
+          age_human: '1 second ago',
+          activity_state: 'live',
+          record_count: 42,
+          parse_errors: 0,
+          user_message_count: 4,
+          first_user_message: 'починить фильтр сегодня',
+          last_user_message: 'усилить playwright проверку',
+          intent_evolution: ['починить фильтр сегодня'],
+          route: {
+            harness: 'codex',
+            id: 'rollout-demo.jsonl',
+            href: '/sessions/codex/rollout-demo.jsonl',
+          },
+        },
+        errors: [],
+      },
+      sessions: {
+        total: 1,
+        limit: 100,
+        offset: 0,
+        sessions: [
+          {
+            session_id: 'second-session',
+            agent_type: 'codex',
+            agent_name: 'Codex',
+            cwd: '/home/pets/zoo/agents_sessions_dashboard',
+            timestamp_start: '2026-03-12T08:10:00+00:00',
+            status: 'active',
+            user_intent: 'открыть detail page',
+            first_user_message: 'открыть detail page',
+            last_user_message: 'проверить rich card',
+            user_message_count: 3,
+            tool_calls: ['exec_command'],
+            token_usage: {
+              input_tokens: 120,
+              output_tokens: 90,
+              total_tokens: 210,
+            },
+            files_modified: [],
+            source_file: '/home/pets/.codex/sessions/2026/03/10/rollout-second.jsonl',
+            route: {
+              harness: 'codex',
+              id: 'rollout-second.jsonl',
+              href: '/sessions/codex/rollout-second.jsonl',
+            },
+          },
+        ],
+      },
+      metrics: {
+        success: true,
+        data: {
+          total_sessions: 1,
+          by_agent: { codex: 1 },
+          by_status: { active: 1 },
+          total_tokens: 300,
+          last_updated: '2026-03-12T00:00:00Z',
+        },
+      },
+      detail: {
+        meta: {
+          timezone: 'Europe/Moscow',
+          live_within_minutes: 10,
+          active_within_minutes: 60,
+        },
+        session: {
+          provider: 'codex',
+          path: '/home/pets/.codex/sessions/2026/03/10/rollout-second.jsonl',
+          filename: 'rollout-second.jsonl',
+          session_id: 'second-session',
+          cwd: '/home/pets/zoo/agents_sessions_dashboard',
+          first_user_message: 'первое сообщение',
+          last_user_message: 'последнее сообщение',
+          user_messages: [
+            'первое сообщение',
+            'собрать контекст',
+            'починить detail page',
+            'добавить message anchors',
+            'проверить timeline',
+            'последнее сообщение',
+          ],
+          message_anchors: {
+            first: 'первое сообщение',
+            middle: [
+              'собрать контекст',
+              'починить detail page',
+              'добавить message anchors',
+              'проверить timeline',
+            ],
+            last: 'последнее сообщение',
+          },
+          intent_evolution: ['первый шаг', 'второй шаг'],
+          route: {
+            harness: 'codex',
+            id: 'rollout-second.jsonl',
+            href: '/sessions/codex/rollout-second.jsonl',
+          },
+          tool_calls: ['exec_command'],
+          files_modified: ['frontend/app/page.tsx'],
+          git_repository_root: '/home/pets/zoo/agents_sessions_dashboard',
+          git_commits: [
+            {
+              hash: '1234567890abcdef1234567890abcdef12345678',
+              short_hash: '1234567',
+              title: 'Add session detail route',
+              author_name: 'Pets',
+              committed_at: '2026-03-12T08:02:00+00:00',
+              committed_at_local: '2026-03-12 11:02:00 MSK',
+            },
+            {
+              hash: 'abcdef1234567890abcdef1234567890abcdef12',
+              short_hash: 'abcdef1',
+              title: 'Add git commit block',
+              author_name: 'Pets',
+              committed_at: '2026-03-12T08:04:00+00:00',
+              committed_at_local: '2026-03-12 11:04:00 MSK',
+            },
+          ],
+          token_usage: {
+            total_tokens: 2500,
+            input_tokens: 1000,
+            output_tokens: 1500,
+          },
+          timeline: [
+            {
+              timestamp: '2026-03-12T08:00:00+00:00',
+              event_type: 'user_message',
+              description: 'первое сообщение',
+              icon: '💬',
+            },
+            {
+              timestamp: '2026-03-12T08:01:00+00:00',
+              event_type: 'tool_call',
+              description: 'rg session detail',
+              icon: '🛠',
+            },
+            {
+              timestamp: '2026-03-12T08:02:00+00:00',
+              event_type: 'file_edit',
+              description: 'frontend/components/SessionDetailClient.tsx',
+              icon: '📝',
+            },
+            {
+              timestamp: '2026-03-12T08:03:00+00:00',
+              event_type: 'tool_call',
+              description: 'pnpm test',
+              icon: '🛠',
+            },
+          ],
+        },
+      },
+    });
+
+    await page.goto('/', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    const latestLink = page.getByTestId('latest-session-open-link');
+    await expect(latestLink).toHaveAttribute('href', '/sessions/codex/rollout-demo.jsonl');
+
+    const firstSessionCard = page.getByTestId('session-card').first();
+    await expect(firstSessionCard).toHaveAttribute('href', '/sessions/codex/rollout-second.jsonl');
+
+    await firstSessionCard.click();
+    await expect(page).toHaveURL(/\/sessions\/codex\/rollout-second\.jsonl$/);
+    await expect(page.getByTestId('session-detail-page')).toBeVisible();
+    await expect(page.getByTestId('session-detail-card')).toBeVisible();
+    await expect(page.getByTestId('message-anchors')).toBeVisible();
+    await expect(page.getByTestId('message-anchor-first')).toContainText('первое сообщение');
+    await expect(page.getByTestId('message-anchor-middle-0')).toContainText('собрать контекст');
+    await expect(page.getByTestId('message-anchor-middle-3')).toContainText('проверить timeline');
+    await expect(page.getByTestId('message-anchor-middle-4')).toHaveCount(0);
+    await expect(page.getByTestId('message-anchor-last')).toContainText('последнее сообщение');
+    await expect(page.getByTestId('git-commits-block')).toBeVisible();
+    await expect(page.getByTestId('git-commit-item-0')).toContainText('Add session detail route');
+    await expect(page.getByTestId('git-commit-item-1')).toContainText('Add git commit block');
+    await expect(page.getByTestId('session-timeline')).toBeVisible();
+    await expect(page.getByTestId('session-timeline-item-0')).toContainText('первое сообщение');
+    await expect(page.getByTestId('session-timeline-item-3')).toContainText('pnpm test');
+  });
+
+  test('real session card click opens the published detail route', async ({ page }) => {
+    await gotoDashboard(page);
+    await maybeAuthenticateThroughUi(page);
+    await expectLoadedDashboard(page);
+
+    const firstSessionCard = page.getByTestId('session-card').first();
+    test.skip(await firstSessionCard.count() === 0, 'No visible session cards available for detail-route coverage');
+
+    const href = await firstSessionCard.getAttribute('href');
+    expect(href).toBeTruthy();
+
+    await firstSessionCard.click();
+    await expect(page).toHaveURL(new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+    await expect(page.getByTestId('session-detail-page')).toBeVisible();
+    await expect(page.getByTestId('session-detail-card')).toBeVisible();
+    await expect(page.getByTestId('message-anchors')).toBeVisible();
+    await expect(page.getByTestId('git-commits-block')).toBeVisible();
+    await expect(page.getByTestId('session-timeline')).toBeVisible();
+  });
+
   test('shows metrics that match the backend payload', async ({ page, request }) => {
     await maybeAuthenticateApiRequest(request);
     const apiMetrics = await getJson<MetricsPayload>(request, METRICS_API_PATH);
@@ -480,7 +950,6 @@ test.describe('Published URL end-to-end', () => {
     await gotoDashboard(page);
     await maybeAuthenticateThroughUi(page);
     await expectLoadedDashboard(page);
-    await expandDashboard(page);
 
     await expectMetricValue(page, 'metric-total-sessions-value', apiMetrics.data.total_sessions);
     await expectMetricValue(page, 'metric-active-value', apiMetrics.data.by_status.active || 0);
@@ -551,7 +1020,6 @@ test.describe('Published URL end-to-end', () => {
     await gotoDashboard(page);
     await maybeAuthenticateThroughUi(page);
     await expectLoadedDashboard(page);
-    await expandDashboard(page);
 
     const sessionsResponsePromise = page.waitForResponse((response) => {
       return isSuccessfulApiResponse(response, SESSIONS_API_PATH);
@@ -618,20 +1086,20 @@ test.describe('Published URL end-to-end', () => {
     expect(meAfterLogout.is_authenticated).toBe(false);
   });
 
-  test('session detail endpoint serves a real session from the published API', async ({ request }) => {
+  test('session artifact endpoint serves a real session from the published API', async ({ request }) => {
     await maybeAuthenticateApiRequest(request);
     const sessions = await getJson<SessionsPayload>(request, buildSessionsUrl({ limit: 1 }));
     const [firstSession] = sessions.sessions;
 
-    test.skip(!firstSession, 'No sessions available for session detail coverage');
+    test.skip(!firstSession?.route, 'No sessions with route metadata available for artifact detail coverage');
 
-    const sessionDetail = await getJson<SessionRecord>(
+    const sessionDetail = await getJson<SessionArtifactPayload>(
       request,
-      `/api/sessions/${firstSession!.session_id}`,
+      `/api/session-artifacts/${firstSession!.route!.harness}/${encodeURIComponent(firstSession!.route!.id)}`,
     );
 
-    expect(sessionDetail.session_id).toBe(firstSession!.session_id);
-    expect(sessionDetail.agent_type).toBeTruthy();
-    expect(sessionDetail.status).toBeTruthy();
+    expect(sessionDetail.session.session_id).toBe(firstSession!.session_id);
+    expect(sessionDetail.session.provider).toBe(firstSession!.agent_type);
+    expect(sessionDetail.session.route.id).toBe(firstSession!.route!.id);
   });
 });

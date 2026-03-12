@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError, LatestSessionResponse, Metrics, Session } from '@/lib/api';
 import { logClientEvent } from '@/lib/debug';
 import { runtimeConfig } from '@/lib/runtime-config';
+import { getSessionRouteKey, matchesRoute } from '@/lib/session-route';
+import AuthPanel from '@/components/AuthPanel';
 import LatestSessionCard from '@/components/LatestSessionCard';
 import SessionCard from '@/components/SessionCard';
 import MetricsPanel from '@/components/MetricsPanel';
@@ -93,7 +95,6 @@ export default function Dashboard() {
   const [agentFilter, setAgentFilter] = useState<string>('all');
   const telegramWidgetRef = useRef<HTMLDivElement | null>(null);
   const dashboardLoadRef = useRef(0);
-  const isLatestOnlyMode = dateFilter === 'today' && filter === 'all' && agentFilter === 'all';
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -113,7 +114,7 @@ export default function Dashboard() {
     window.history.replaceState({}, document.title, window.location.pathname);
   }, []);
 
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     const loadId = dashboardLoadRef.current + 1;
     dashboardLoadRef.current = loadId;
     setLoadError(null);
@@ -125,7 +126,6 @@ export default function Dashboard() {
       dateFilter,
       statusFilter: filter,
       agentFilter,
-      latestOnlyMode: isLatestOnlyMode,
     });
 
     try {
@@ -154,43 +154,6 @@ export default function Dashboard() {
         logClientEvent('info', 'dashboard.load.auth_required', {
           loadId,
           authMethod: authStatus.auth_method,
-        });
-        return;
-      }
-
-      if (isLatestOnlyMode) {
-        try {
-          const latestPayload = await api.getLatestSession();
-          if (loadId !== dashboardLoadRef.current) {
-            return;
-          }
-
-          setLatestSession(latestPayload);
-          setLatestError(null);
-        } catch (error) {
-          if (loadId !== dashboardLoadRef.current) {
-            return;
-          }
-
-          setLatestSession(null);
-          setLatestError(getApiErrorMessage(error, 'Не удалось загрузить latest session.'));
-          logClientEvent('warn', 'dashboard.latest.failed', {
-            loadId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-
-        setSessions([]);
-        setMetrics(null);
-        setLoadError(null);
-        setLatestLoading(false);
-        logClientEvent('info', 'dashboard.load.completed', {
-          loadId,
-          sessions: 0,
-          totalSessions: 0,
-          latestLoaded: true,
-          metricsLoaded: false,
-          latestOnlyMode: true,
         });
         return;
       }
@@ -241,7 +204,13 @@ export default function Dashboard() {
       }
 
       if (sessionsRes.status === 'fulfilled') {
-        setSessions(sessionsRes.value.sessions);
+        const latestRouteKey = latestRes.status === 'fulfilled'
+          ? getSessionRouteKey(latestRes.value.latest)
+          : '';
+        const nextSessions = latestRouteKey
+          ? sessionsRes.value.sessions.filter((session) => !matchesRoute(session, latestRouteKey))
+          : sessionsRes.value.sessions;
+        setSessions(nextSessions);
       } else {
         setSessions([]);
       }
@@ -307,7 +276,7 @@ export default function Dashboard() {
         setLatestLoading(false);
       }
     }
-  };
+  }, [agentFilter, dateFilter, filter]);
 
   const completeTelegramLogin = async (idToken: string) => {
     try {
@@ -335,7 +304,7 @@ export default function Dashboard() {
     setLoading(true);
     setLoadError(null);
     void loadDashboard();
-  }, [dateFilter, filter, agentFilter, authRevision]);
+  }, [authRevision, loadDashboard]);
 
   useEffect(() => {
     const container = telegramWidgetRef.current;
@@ -499,116 +468,19 @@ export default function Dashboard() {
       </header>
 
       {authChecked && !authenticated ? (
-        <section className="grid min-h-[calc(100vh-12rem)] place-items-start pt-8 md:pt-14">
-          <div className="w-full max-w-4xl rounded-[32px] border border-[#d7e0ea] bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
-            <div className="grid gap-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,0.85fr)]">
-              <div className="border-b border-[#d7e0ea] bg-[linear-gradient(135deg,#fff6dc_0%,#ffffff_55%,#eef6ff_100%)] p-8 lg:border-b-0 lg:border-r">
-                <div className="font-mono text-[11px] uppercase tracking-[0.26em] text-nexus-500">
-                  private access
-                </div>
-                <h2 className="mt-3 text-3xl font-bold text-nexus-900">Доступ защищён</h2>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-nexus-600">
-                  Это приватный рабочий dashboard. Войдите, чтобы открыть latest session,
-                  карточки сессий, метрики и live-обновления.
-                </p>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/80 bg-white/80 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-nexus-500">🔒 Режим</div>
-                    <div className="mt-2 text-sm font-semibold text-nexus-800">Private only</div>
-                  </div>
-                  <div className="rounded-2xl border border-white/80 bg-white/80 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-nexus-500">🧭 Latest</div>
-                    <div className="mt-2 text-sm font-semibold text-nexus-800">1 глобальная сессия</div>
-                  </div>
-                  <div className="rounded-2xl border border-white/80 bg-white/80 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-nexus-500">🗂 Карточки</div>
-                    <div className="mt-2 text-sm font-semibold text-nexus-800">Полные пути без trimming</div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                data-testid="login-form"
-                className="p-8"
-              >
-                <div className="mb-5">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-nexus-500">
-                    password gate
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-nexus-500">
-                    Используйте пароль, чтобы перейти к latest session и полному обзору сессий.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  {telegramEnabled && (
-                    telegramMode === 'widget' && telegramBotUsername && telegramWidgetAuthUrl ? (
-                      <div
-                        data-testid="telegram-login-button"
-                        ref={telegramWidgetRef}
-                        className="flex min-h-12 items-center justify-center"
-                      />
-                    ) : (
-                      <button
-                        data-testid="telegram-login-button"
-                        type="button"
-                        onClick={handleTelegramLogin}
-                        disabled={authSubmitting}
-                        className="tg-auth-button flex w-full items-center justify-center gap-3 rounded-full bg-[#229ED9] px-4 py-3 font-medium text-white shadow-sm transition hover:bg-[#1b8bc0] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <span aria-hidden="true">✈️</span>
-                        <span>Log in with Telegram</span>
-                      </button>
-                    )
-                  )}
-
-                  {passwordRequired && (
-                    <>
-                      {telegramEnabled && (
-                        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-nexus-400">
-                          <span className="h-px flex-1 bg-nexus-200" />
-                          <span>or use password</span>
-                          <span className="h-px flex-1 bg-nexus-200" />
-                        </div>
-                      )}
-
-                      <form onSubmit={handleLogin} className="space-y-4">
-                        <label className="block">
-                          <span className="mb-2 block text-sm font-medium text-nexus-700">Пароль</span>
-                          <input
-                            data-testid="auth-password-input"
-                            type="password"
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                            className="w-full rounded-2xl border border-nexus-200 px-4 py-3 outline-none focus:border-nexus-400"
-                            placeholder="Введите пароль"
-                          />
-                        </label>
-
-                        <button
-                          data-testid="login-button"
-                          type="submit"
-                          disabled={authSubmitting || password.length === 0}
-                          className="w-full rounded-2xl bg-nexus-800 px-4 py-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {authSubmitting ? 'Вход...' : 'Войти'}
-                        </button>
-                      </form>
-                    </>
-                  )}
-
-                  {authError && (
-                    <p data-testid="auth-error" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                      {authError}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <AuthPanel
+          passwordRequired={passwordRequired}
+          telegramEnabled={telegramEnabled}
+          telegramConfigured={telegramConfigured}
+          telegramMode={telegramMode}
+          authSubmitting={authSubmitting}
+          authError={authError}
+          password={password}
+          telegramWidgetRef={telegramWidgetRef}
+          onPasswordChange={setPassword}
+          onPasswordSubmit={handleLogin}
+          onTelegramLogin={handleTelegramLogin}
+        />
       ) : (
         <>
           <section className="mb-6">
@@ -652,7 +524,7 @@ export default function Dashboard() {
           </section>
 
           {/* Metrics */}
-          {!isLatestOnlyMode && metrics && <MetricsPanel metrics={metrics} />}
+          {metrics && <MetricsPanel metrics={metrics} />}
 
           {/* Filters */}
           <div className="flex gap-4 mb-6">
@@ -702,17 +574,8 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {isLatestOnlyMode && (
-            <div
-              data-testid="latest-only-hint"
-              className="mb-6 rounded-2xl border border-[#d7e0ea] bg-white px-5 py-4 text-sm text-nexus-600 shadow-sm"
-            >
-              По умолчанию показана только одна latest session. Измени любой фильтр, чтобы раскрыть метрики и другие карточки.
-            </div>
-          )}
-
           {/* Sessions Grid */}
-          {!isLatestOnlyMode && loadError && (
+          {loadError && (
             <div
               data-testid="dashboard-load-error"
               className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -721,11 +584,11 @@ export default function Dashboard() {
             </div>
           )}
 
-          {!isLatestOnlyMode && loading ? (
+          {loading ? (
             <div className="text-center py-12 text-nexus-400">
               ⏳ Загрузка...
             </div>
-          ) : !isLatestOnlyMode ? (
+          ) : (
             <>
               {/* Active Sessions */}
               {activeSessions.length > 0 && (
@@ -776,7 +639,7 @@ export default function Dashboard() {
                 </div>
               )}
             </>
-          ) : null}
+          )}
         </>
       )}
     </main>

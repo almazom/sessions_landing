@@ -210,6 +210,10 @@ function sendFileViaT2me(filePath, caption, sendT2me) {
   };
 }
 
+function isIgnorableRequestFailure(url, error) {
+  return error === 'net::ERR_ABORTED' && url.includes('_rsc=');
+}
+
 async function waitForVisible(locator, timeout) {
   try {
     await locator.waitFor({ state: 'visible', timeout });
@@ -275,10 +279,12 @@ async function waitForPostAuthStage(page, timeoutMs) {
   await waitForLatestPanelReady(page, timeoutMs);
 
   const candidates = [
+    ['session-card', page.getByTestId('session-card')],
+    ['section-header', page.locator('[data-testid$="-section-header"]')],
+    ['empty-state', page.getByTestId('empty-state')],
     ['latest-card', page.getByTestId('latest-session-card')],
     ['latest-empty', page.getByTestId('latest-session-empty')],
     ['latest-error', page.getByTestId('latest-session-error')],
-    ['latest-only-hint', page.getByTestId('latest-only-hint')],
     ['load-error', page.getByTestId('dashboard-load-error')],
     ['loading', page.getByText('⏳ Загрузка...')],
   ];
@@ -399,10 +405,14 @@ async function main() {
   });
 
   page.on('requestfailed', (request) => {
+    const error = request.failure()?.errorText || 'unknown';
+    if (isIgnorableRequestFailure(request.url(), error)) {
+      return;
+    }
     failedRequests.push({
       method: request.method(),
       url: request.url(),
-      error: request.failure()?.errorText || 'unknown',
+      error,
     });
   });
 
@@ -522,30 +532,20 @@ async function main() {
 
     await captureStepScreenshot(4, 'post-login', `E2E smoke step 4: stage after login is ${postLoginStage}.`);
 
-    if (expandDashboard && await page.getByTestId('latest-only-hint').count() > 0) {
-      await waitForLatestPanelReady(page, timeoutMs);
-      emitStep(5, 'expand-dashboard-via-filter');
-      const sessionsResponsePromise = page.waitForResponse(
-        (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/sessions'),
-        { timeout: timeoutMs },
-      );
-      const metricsResponsePromise = page.waitForResponse(
-        (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/metrics'),
-        { timeout: timeoutMs },
-      );
-
-      await page.getByTestId('date-filter').selectOption('all');
-      await Promise.all([sessionsResponsePromise, metricsResponsePromise]);
+    if (expandDashboard) {
       dashboardStage = await waitForDashboardReady(page, timeoutMs);
-      expandedDashboard = true;
-      await captureStepScreenshot(5, 'expanded-dashboard', 'E2E smoke step 5: dashboard expanded after changing filters.');
+      if (dashboardStage !== 'dashboard-pending') {
+        emitStep(5, 'capture-default-dashboard', dashboardStage);
+        expandedDashboard = true;
+        await captureStepScreenshot(5, 'default-dashboard', 'E2E smoke step 5: dashboard visible without changing filters.');
 
-      steps.push({
-        step: 5,
-        name: 'expand-dashboard-via-filter',
-        status: 'ok',
-        stage: dashboardStage,
-      });
+        steps.push({
+          step: 5,
+          name: 'capture-default-dashboard',
+          status: 'ok',
+          stage: dashboardStage,
+        });
+      }
     }
 
     if (await page.getByTestId('session-card').count() > 0) {
@@ -594,7 +594,6 @@ async function main() {
       api_responses: apiResponses,
       failed_requests: failedRequests,
       section_headers: await page.locator('[data-testid$="-section-header"]').allInnerTexts().catch(() => []),
-      latest_only_hint_visible: await page.getByTestId('latest-only-hint').count().catch(() => 0),
       latest_card_visible: await page.getByTestId('latest-session-card').count().catch(() => 0),
       latest_empty_visible: await page.getByTestId('latest-session-empty').count().catch(() => 0),
       latest_error_visible: await page.getByTestId('latest-session-error').count().catch(() => 0),

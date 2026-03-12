@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { Session } from '@/lib/api';
 import AgentIcon from '@/components/AgentIcon';
 
@@ -30,6 +32,7 @@ export default function SessionCard({ session }: Props) {
   const agentColor = agentColors[session.agent_type] || 'bg-gray-100 text-gray-700';
   const statusIcon = statusIcons[session.status] || '⚪';
   const directionText = session.user_intent || session.first_user_message || session.last_user_message || 'Направление пока не извлечено.';
+  const href = session.route?.href || null;
 
   // Форматирование токенов
   const formatTokens = (n: number) => {
@@ -38,13 +41,8 @@ export default function SessionCard({ session }: Props) {
     return String(n);
   };
 
-  return (
-    <div
-      data-testid="session-card"
-      data-agent-type={session.agent_type}
-      data-session-status={session.status}
-      className="rounded-[24px] border border-[#d7e0ea] bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-    >
+  const content = (
+    <>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span data-testid="session-agent-name" className={`rounded-full border px-3 py-1 text-xs font-semibold ${agentColor}`}>
@@ -159,6 +157,33 @@ export default function SessionCard({ session }: Props) {
           ⚠️ {session.error_message}
         </div>
       )}
+    </>
+  );
+
+  const className = 'rounded-[24px] border border-[#d7e0ea] bg-white p-4 shadow-sm transition-shadow hover:shadow-md';
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        data-testid="session-card"
+        data-agent-type={session.agent_type}
+        data-session-status={session.status}
+        className={`block ${className}`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      data-testid="session-card"
+      data-agent-type={session.agent_type}
+      data-session-status={session.status}
+      className={className}
+    >
+      {content}
     </div>
   );
 }

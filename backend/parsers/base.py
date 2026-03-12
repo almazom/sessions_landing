@@ -164,13 +164,13 @@ class SessionParser(ABC):
     def build_timeline(self, events: List[Dict], max_events: int = 20) -> List[TimelineEvent]:
         """Build compressed timeline from events."""
         timeline = []
-        seen_types = set()
+        last_event_type = None
 
         for event in events[-max_events:]:
             event_type = event.get("type", "unknown")
 
             # Skip duplicate consecutive events
-            if event_type in seen_types and len(timeline) > 0:
+            if event_type == last_event_type and len(timeline) > 0:
                 continue
 
             timeline.append(TimelineEvent(
@@ -180,7 +180,7 @@ class SessionParser(ABC):
                 icon=event.get("icon", "📝"),
                 details=event.get("details")
             ))
-            seen_types.add(event_type)
+            last_event_type = event_type
 
         return timeline
 

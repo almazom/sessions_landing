@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -17,6 +19,8 @@ from .scanner import SessionScanner
 DEFAULT_TIMEZONE = "Europe/Moscow"
 DEFAULT_LIVE_WITHIN_MINUTES = 10
 DEFAULT_ACTIVE_WITHIN_MINUTES = 60
+DETAIL_TIMELINE_LIMIT = 14
+DETAIL_GIT_COMMIT_LIMIT = 12
 
 
 def resolve_timezone(name: str) -> Tuple[ZoneInfo, str]:
@@ -214,6 +218,230 @@ def activity_state(seconds: float, live_minutes: int, active_minutes: int) -> st
     return "idle"
 
 
+def _normalize_message_text(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.replace("\u00a0", " ").split()).strip()
+
+
+def _message_signature(value: str) -> str:
+    normalized = _normalize_message_text(value).lower()
+    return re.sub(r"\W+", " ", normalized).strip()
+
+
+def _dedupe_consecutive_messages(messages: Iterable[Any]) -> List[str]:
+    deduped: List[str] = []
+    last_signature = None
+
+    for message in messages:
+        normalized = _normalize_message_text(message)
+        if not normalized:
+            continue
+
+        signature = _message_signature(normalized)
+        if signature and signature == last_signature:
+            continue
+
+        deduped.append(normalized)
+        last_signature = signature
+
+    return deduped
+
+
+def _select_evenly_spaced(values: List[Any], limit: int) -> List[Any]:
+    if len(values) <= limit:
+        return list(values)
+
+    last_index = len(values) - 1
+    selected: List[Any] = []
+    seen_indexes = set()
+
+    for index in range(limit):
+        selected_index = round(index * last_index / (limit - 1))
+        if selected_index in seen_indexes:
+            continue
+        selected.append(values[selected_index])
+        seen_indexes.add(selected_index)
+
+    if len(selected) == limit:
+        return selected
+
+    for value in values:
+        if value in selected:
+            continue
+        selected.append(value)
+        if len(selected) == limit:
+            break
+
+    return selected
+
+
+def build_message_anchors(messages: Iterable[Any]) -> Dict[str, Any]:
+    deduped = _dedupe_consecutive_messages(messages)
+    if not deduped:
+        return {
+            "first": "",
+            "middle": [],
+            "last": "",
+        }
+
+    first = deduped[0]
+    last = deduped[-1]
+    middle_candidates = deduped[1:-1]
+    middle_limit = min(4, len(middle_candidates))
+    middle = (
+        _select_evenly_spaced(middle_candidates, middle_limit)
+        if middle_limit > 0
+        else []
+    )
+
+    return {
+        "first": first,
+        "middle": middle,
+        "last": last,
+    }
+
+
+def build_detail_timeline(timeline: Iterable[Any], max_events: int = DETAIL_TIMELINE_LIMIT) -> List[Dict[str, Any]]:
+    normalized: List[Dict[str, Any]] = []
+
+    for raw_event in timeline:
+        if hasattr(raw_event, "to_dict"):
+            event = raw_event.to_dict()
+        elif isinstance(raw_event, dict):
+            event = dict(raw_event)
+        else:
+            continue
+
+        normalized.append({
+            "timestamp": event.get("timestamp", ""),
+            "event_type": event.get("event_type") or event.get("type") or "unknown",
+            "description": event.get("description") or event.get("event_type") or event.get("type") or "unknown",
+            "icon": event.get("icon", "📝"),
+            "details": event.get("details"),
+        })
+
+    if len(normalized) <= max_events:
+        return normalized
+
+    if max_events <= 2:
+        return normalized[:max_events]
+
+    first = normalized[0]
+    last = normalized[-1]
+    middle = normalized[1:-1]
+    middle_limit = max_events - 2
+
+    return [first, *_select_evenly_spaced(middle, middle_limit), last]
+
+
+def _empty_git_context(repository_root: Optional[str] = None) -> Dict[str, Any]:
+    return {
+        "repository_root": repository_root,
+        "commits": [],
+    }
+
+
+def _run_git_command(cwd: str, args: List[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", cwd, *args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def resolve_git_repository_root(cwd: str) -> Optional[str]:
+    if not cwd:
+        return None
+
+    path = Path(cwd).expanduser()
+    if not path.exists():
+        return None
+
+    result = _run_git_command(str(path), ["rev-parse", "--show-toplevel"])
+    if result.returncode != 0:
+        return None
+
+    repository_root = result.stdout.strip()
+    return repository_root or None
+
+
+def list_session_git_commits(
+    cwd: str,
+    started_at: Optional[str],
+    ended_at: Optional[str],
+    timezone_name: str = DEFAULT_TIMEZONE,
+    limit: int = DETAIL_GIT_COMMIT_LIMIT,
+) -> Dict[str, Any]:
+    repository_root = resolve_git_repository_root(cwd)
+    if not repository_root:
+        return _empty_git_context()
+
+    started_dt = parse_iso_datetime(started_at)
+    ended_dt = parse_iso_datetime(ended_at)
+    if not started_dt or not ended_dt or ended_dt < started_dt:
+        return _empty_git_context(repository_root)
+
+    tzinfo, _ = resolve_timezone(timezone_name)
+    pretty_format = "%H%x1f%h%x1f%aI%x1f%an%x1f%s%x1e"
+    result = _run_git_command(
+        repository_root,
+        [
+            "log",
+            "--reverse",
+            "--no-merges",
+            f"--since={started_dt.isoformat()}",
+            f"--until={ended_dt.isoformat()}",
+            f"--pretty=format:{pretty_format}",
+            f"-n{limit}",
+        ],
+    )
+
+    if result.returncode != 0 or not result.stdout.strip():
+        return _empty_git_context(repository_root)
+
+    commits: List[Dict[str, Any]] = []
+    for raw_record in result.stdout.split("\x1e"):
+        record = raw_record.strip()
+        if not record:
+            continue
+
+        parts = [part.strip() for part in record.split("\x1f")]
+        if len(parts) != 5:
+            continue
+
+        commit_hash, short_hash, committed_at, author_name, title = parts
+        committed_dt = parse_iso_datetime(committed_at)
+        commits.append({
+            "hash": commit_hash,
+            "short_hash": short_hash,
+            "title": title,
+            "author_name": author_name,
+            "committed_at": committed_dt.isoformat() if committed_dt else committed_at,
+            "committed_at_local": committed_dt.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M:%S %Z").strip() if committed_dt else committed_at,
+        })
+
+    return {
+        "repository_root": repository_root,
+        "commits": commits,
+    }
+
+
+def build_session_git_commit_context(
+    cwd: str,
+    started_at: Optional[str],
+    ended_at: Optional[str],
+    timezone_name: str = DEFAULT_TIMEZONE,
+) -> Dict[str, Any]:
+    return list_session_git_commits(
+        cwd=cwd,
+        started_at=started_at,
+        ended_at=ended_at,
+        timezone_name=timezone_name,
+    )
+
+
 def build_session_detail_payload(
     session: Dict[str, Any],
     file_path: Path,
@@ -223,6 +451,9 @@ def build_session_detail_payload(
 ) -> Dict[str, Any]:
     tzinfo, timezone_label = resolve_timezone(timezone_name)
     file_stats = inspect_session_file(file_path)
+    user_messages = session.get("user_messages") or []
+    message_anchors = build_message_anchors(user_messages)
+    timeline = build_detail_timeline(session.get("timeline") or [])
     route = build_session_route(
         str(session.get("agent_type") or session.get("provider") or ""),
         str(file_path),
@@ -235,6 +466,12 @@ def build_session_detail_payload(
 
     started_at = parse_iso_datetime(session.get("timestamp_start"))
     ended_at = parse_iso_datetime(session.get("timestamp_end")) or modified_at
+    git_context = build_session_git_commit_context(
+        cwd=str(session.get("cwd") or ""),
+        started_at=started_at.isoformat() if started_at else None,
+        ended_at=ended_at.isoformat(),
+        timezone_name=timezone_label,
+    )
     duration_seconds: Optional[int] = None
     if started_at:
         duration_seconds = max(0, int((ended_at - started_at).total_seconds()))
@@ -262,6 +499,8 @@ def build_session_detail_payload(
         "duration_human": duration_human(duration_seconds) if duration_seconds is not None else None,
         "first_user_message": session.get("first_user_message") or "",
         "last_user_message": session.get("last_user_message") or "",
+        "user_messages": _dedupe_consecutive_messages(user_messages),
+        "message_anchors": message_anchors,
         "intent_evolution": session.get("intent_evolution") or [],
         "intent_summary_source": "local_fallback",
         "intent_summary_provider": None,
@@ -273,8 +512,10 @@ def build_session_detail_payload(
         "token_usage": session.get("token_usage") or {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
         "files_modified": session.get("files_modified") or [],
         "git_branch": session.get("git_branch"),
+        "git_repository_root": git_context.get("repository_root"),
+        "git_commits": git_context.get("commits") or [],
         "plan_steps": session.get("plan_steps") or [],
-        "timeline": session.get("timeline") or [],
+        "timeline": timeline,
         "error_message": session.get("error_message"),
     }
 

@@ -45,6 +45,13 @@ export interface Session {
   files_modified: string[];
   source_file: string;
   error_message?: string;
+  route?: SessionRoute;
+}
+
+export interface SessionRoute {
+  harness: string;
+  id: string;
+  href: string;
 }
 
 export interface LatestSessionSummary {
@@ -73,6 +80,7 @@ export interface LatestSessionSummary {
   intent_evolution: string[];
   intent_summary_source?: 'ai' | 'local_fallback';
   intent_summary_provider?: string;
+  route?: SessionRoute;
 }
 
 export interface LatestSessionResponse {
@@ -115,6 +123,65 @@ export interface SessionsResponse {
   limit: number;
   offset: number;
   sessions: Session[];
+}
+
+export interface SessionTimelineEvent {
+  timestamp: string;
+  event_type: string;
+  description: string;
+  icon?: string;
+  details?: string | null;
+}
+
+export interface SessionPlanStep {
+  step: string;
+  status: string;
+}
+
+export interface SessionMessageAnchors {
+  first: string;
+  middle: string[];
+  last: string;
+}
+
+export interface SessionGitCommit {
+  hash: string;
+  short_hash: string;
+  title: string;
+  author_name: string;
+  committed_at: string;
+  committed_at_local?: string;
+}
+
+export interface SessionArtifactSummary extends LatestSessionSummary {
+  agent_name?: string;
+  cwd: string;
+  status?: string;
+  user_intent?: string;
+  user_messages: string[];
+  message_anchors: SessionMessageAnchors;
+  tool_calls: string[];
+  token_usage: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+  };
+  files_modified: string[];
+  git_branch?: string | null;
+  git_repository_root?: string | null;
+  git_commits: SessionGitCommit[];
+  plan_steps: SessionPlanStep[];
+  timeline: SessionTimelineEvent[];
+  error_message?: string | null;
+}
+
+export interface SessionArtifactResponse {
+  meta: {
+    timezone: string;
+    live_within_minutes: number;
+    active_within_minutes: number;
+  };
+  session: SessionArtifactSummary;
 }
 
 export interface AuthStatus {
@@ -258,6 +325,12 @@ class ApiClient {
 
   async getLatestSession(): Promise<LatestSessionResponse> {
     return this.fetch<LatestSessionResponse>('/api/latest-session');
+  }
+
+  async getSessionArtifact(harness: string, artifactId: string): Promise<SessionArtifactResponse> {
+    return this.fetch<SessionArtifactResponse>(
+      `/api/session-artifacts/${encodeURIComponent(harness)}/${encodeURIComponent(artifactId)}`,
+    );
   }
 
   async getMetrics(): Promise<{ success: boolean; data: Metrics }> {

@@ -162,6 +162,10 @@ function assert(condition, message) {
   }
 }
 
+function isIgnorableRequestFailure(url, error) {
+  return error === 'net::ERR_ABORTED' && url.includes('_rsc=');
+}
+
 async function waitForVisible(locator, timeout) {
   try {
     await locator.waitFor({ state: 'visible', timeout });
@@ -178,7 +182,6 @@ async function waitForAnyStage(page, timeoutMs) {
     page.getByTestId('latest-session-empty'),
     page.getByTestId('latest-session-error'),
     page.getByTestId('dashboard-load-error'),
-    page.getByTestId('latest-only-hint'),
     page.getByText('⏳ Загрузка...'),
   ];
 
@@ -248,10 +251,14 @@ async function main() {
   });
 
   page.on('requestfailed', (request) => {
+    const error = request.failure()?.errorText || 'unknown';
+    if (isIgnorableRequestFailure(request.url(), error)) {
+      return;
+    }
     failedRequests.push({
       method: request.method(),
       url: request.url(),
-      error: request.failure()?.errorText || 'unknown',
+      error,
     });
   });
 
@@ -302,29 +309,6 @@ async function main() {
   });
 
   await waitForLatestPanelReady(page, timeoutMs);
-
-  const latestOnlyHintVisible = await page.getByTestId('latest-only-hint').count() > 0;
-
-  if (latestOnlyHintVisible) {
-    const sessionsResponsePromise = page.waitForResponse(
-      (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/sessions'),
-      { timeout: timeoutMs },
-    );
-    const metricsResponsePromise = page.waitForResponse(
-      (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/metrics'),
-      { timeout: timeoutMs },
-    );
-
-    await page.getByTestId('date-filter').selectOption('all');
-    await Promise.all([sessionsResponsePromise, metricsResponsePromise]);
-
-    if (await loadingIndicator.count() > 0) {
-      await loadingIndicator.waitFor({
-        state: 'hidden',
-        timeout: Math.max(hydrationWaitMs, timeoutMs),
-      });
-    }
-  }
 
   const loadingVisible = await loadingIndicator.isVisible().catch(() => false);
   const sectionHeaders = await page.locator('[data-testid$="-section-header"]').allInnerTexts();
