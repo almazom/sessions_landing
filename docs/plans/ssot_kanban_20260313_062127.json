@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T12:32:20Z",
+    "last_updated": "2026-03-13T12:37:20Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -3723,7 +3723,7 @@
       "title": "Покрыть event stream contract tests",
       "description": "Добавить тесты на порядок, форму и деградацию browser event stream, включая parity checks против SDK `ThreadEvent`/`ThreadItem` fixtures.",
       "context": "Нужен жесткий contract around normalized event stream. SDK event/item types дают полезный reference corpus для regression tests.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать поток событий устойчивым к регрессиям.",
       "estimation": {
         "hours": 3,
@@ -3780,16 +3780,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/event_stream_contract.py",
+          "tests/interactive/test_task_029.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -3799,6 +3803,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T12:34:50Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after event normalization and fallback rendering both landed and needed one contract gate."
+        },
+        {
+          "timestamp": "2026-03-13T12:36:20Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Event stream contract gate and green/red task checks passed across normalized and fallback browser events."
+        },
+        {
+          "timestamp": "2026-03-13T12:36:40Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Expected event order and completed-count checks were simplified into clearer contract assertions."
+        },
+        {
+          "timestamp": "2026-03-13T12:36:55Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task-029 commit content was prepared after pytest and py_compile checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T12:37:20Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red event stream contract commands passed with CSM 100."
         }
       ],
       "lane": "event-stream",
