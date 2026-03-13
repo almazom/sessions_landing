@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T08:55:00Z",
+    "last_updated": "2026-03-13T09:06:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -688,7 +688,7 @@
       "title": "Поднять Playwright skeleton",
       "description": "Сделать начальный Playwright skeleton для будущего interactive route.",
       "context": "Published proof требует browser harness с самого начала.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Подготовить браузерный контур, который потом расширяется без переделки основы.",
       "estimation": {
         "hours": 4,
@@ -744,16 +744,22 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
+        "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "AGENTS.md",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "frontend/e2e/interactive-session.spec.ts",
+          "tests/interactive/playwright_skeleton.py",
+          "tests/interactive/test_task_005.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -781,6 +787,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "Simplification pass completed; task is ready for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T09:01:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as 2c741a6 and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T09:05:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red reproduce commands passed with CSM 100."
         }
       ],
       "lane": "fixtures",
@@ -796,7 +814,7 @@
       "title": "Собрать Codex transport and SDK matrix",
       "description": "Сравнить `codex app-server`, `codex exec --experimental-json` и TypeScript `@openai/codex-sdk` по реально доступным сигналам, ограничениям и fit для browser continuation.",
       "context": "SDK уже исследован: это Node wrapper над JSONL exec-потоком. Нужен фактический matrix, где app-server, raw exec и SDK sidecar разведены по ролям, а не смешаны в один transport.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Снять неопределенность и не строить v1 на догадках.",
       "estimation": {
         "hours": 3,
@@ -872,6 +890,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T09:06:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the transport and SDK matrix task immediately after TASK-005 completion."
         }
       ],
       "lane": "transport",
