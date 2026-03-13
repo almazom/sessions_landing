@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T12:03:40Z",
+    "last_updated": "2026-03-13T12:08:10Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -3195,9 +3195,9 @@
         "passed_red_steps": 1,
         "total_red_steps": 1,
         "touched_files": [
+          "backend/api/interactive_store.py",
           "docs/plans/ssot_kanban_20260313_062127.json",
-          "tests/interactive/replay_store_bundle.py",
-          "tests/interactive/test_task_048.py"
+          "tests/interactive/test_task_024.py"
         ],
         "last_failure_note": null
       },
@@ -3208,6 +3208,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T12:05:10Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after replay/store milestone reproduction proved the ownership lock dependencies."
+        },
+        {
+          "timestamp": "2026-03-13T12:06:50Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Ownership lock acquire/release helpers and green/red task checks passed on top of the operational store."
+        },
+        {
+          "timestamp": "2026-03-13T12:07:10Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Ownership lock errors and fixture setup were simplified without changing single-owner behavior."
+        },
+        {
+          "timestamp": "2026-03-13T12:07:35Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task-024 commit content was prepared after pytest and py_compile checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T12:08:10Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red ownership lock commands passed with CSM 100."
         }
       ],
       "lane": "supervisor",

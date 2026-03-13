@@ -164,3 +164,68 @@ def prune_operational_store_snapshot(
             "kept_count": len(kept_records),
         },
     }
+
+
+def acquire_operational_store_lock(
+    record: Dict[str, Any],
+    *,
+    owner_id: str,
+    lease_id: str,
+    heartbeat_at: str,
+    lock_expires_at: str,
+) -> Dict[str, Any]:
+    supervisor = dict(record.get("supervisor") or {})
+    current_owner_id = supervisor.get("owner_id")
+    current_lock_status = supervisor.get("lock_status")
+
+    if (
+        current_lock_status == "claimed"
+        and isinstance(current_owner_id, str)
+        and current_owner_id
+        and current_owner_id != owner_id
+    ):
+        raise PermissionError(
+            "operational store lock is already claimed by another owner"
+        )
+
+    next_record = dict(record)
+    next_record["supervisor"] = {
+        **supervisor,
+        "owner_id": _require_non_empty_text(owner_id, label="lock owner_id"),
+        "lease_id": _require_non_empty_text(lease_id, label="lock lease_id"),
+        "lock_status": "claimed",
+        "heartbeat_at": _require_non_empty_text(
+            heartbeat_at,
+            label="lock heartbeat_at",
+        ),
+        "lock_expires_at": _require_non_empty_text(
+            lock_expires_at,
+            label="lock lock_expires_at",
+        ),
+    }
+    return next_record
+
+
+def release_operational_store_lock(
+    record: Dict[str, Any],
+    *,
+    owner_id: str,
+    released_at: str,
+) -> Dict[str, Any]:
+    supervisor = dict(record.get("supervisor") or {})
+    current_owner_id = supervisor.get("owner_id")
+    if current_owner_id != owner_id:
+        raise PermissionError(
+            "operational store lock may only be released by the owner"
+        )
+
+    next_record = dict(record)
+    next_record["supervisor"] = {
+        **supervisor,
+        "lock_status": "released",
+        "heartbeat_at": _require_non_empty_text(
+            released_at,
+            label="release timestamp",
+        ),
+    }
+    return next_record
