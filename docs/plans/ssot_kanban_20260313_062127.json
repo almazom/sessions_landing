@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T13:43:35Z",
+    "last_updated": "2026-03-13T13:49:30Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -5863,7 +5863,7 @@
       "title": "Провести supervisor and control milestone reproduction",
       "description": "Проверить bundle из ownership locks, supervisor lifecycle, event normalization и inbound control actions.",
       "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
       "estimation": {
         "hours": 4,
@@ -5928,25 +5928,61 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/runtime_control_bundle.py",
+          "tests/interactive/test_task_049.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "python3 -m pytest tests/interactive/test_task_049.py -k runtime_control_bundle"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T07:06:40Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Major-step reproduce gate added to SSOT."
+        },
+        {
+          "timestamp": "2026-03-13T13:46:40Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after ownership locks, supervisor lifecycle, event normalization, and inbound control cards all reached done."
+        },
+        {
+          "timestamp": "2026-03-13T13:48:20Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "The milestone bundle reused existing fixtures and helpers instead of duplicating step-level setup across a new gate."
+        },
+        {
+          "timestamp": "2026-03-13T13:48:45Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Green and broken runtime-control bundle assertions stayed focused on lock lifecycle, event kinds, and validated action types."
+        },
+        {
+          "timestamp": "2026-03-13T13:49:10Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "The runtime-control milestone reproduce command passed with the declared pytest bundle selector."
+        },
+        {
+          "timestamp": "2026-03-13T13:49:30Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Supervisor and control milestone reproduction reached CSM 100 with a real bundle across tasks 024-033."
         }
       ],
       "lane": "verification",
