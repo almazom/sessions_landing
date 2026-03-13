@@ -1,0 +1,836 @@
+{
+  "meta": {
+    "version": "1.5.0",
+    "description": "Single Source of Truth - Kanban Board for Closed-Loop Autonomous Development",
+    "workflow_states": [
+      "backlog",
+      "ready_for_dev",
+      "in_progress",
+      "simplification_step",
+      "auto_commit_step",
+      "reproduce_step",
+      "done",
+      "failed_reproduction",
+      "blocked_needs_human"
+    ],
+    "csm_rules": {
+      "threshold": 95,
+      "calculation_method": "strict_percentage",
+      "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
+      "max_reproduction_attempts": 3
+    },
+    "last_updated": "2026-03-13T06:13:36Z"
+  },
+  "workflow_triggers": {
+    "simplification_step": {
+      "primary_skill": "$code-simplifier",
+      "fallback_url": "http://simp.ly/publish/2M2QdC",
+      "fallback_command": "curl -s http://simp.ly/publish/2M2QdC"
+    },
+    "auto_commit_step": {
+      "primary_skill": "$auto-commit",
+      "fallback_url": "http://simp.ly/publish/hV4mzj",
+      "fallback_command": "curl -s http://simp.ly/publish/hV4mzj"
+    },
+    "reproduce_step": {
+      "primary_skill": "$reproduce",
+      "fallback_url": "http://simp.ly/publish/rLThw7",
+      "fallback_command": "curl -s http://simp.ly/publish/rLThw7"
+    }
+  },
+  "session": {
+    "id": "sess-kimi-like-web-20260313",
+    "goal": "Довести session detail page до Codex-first kimi-web-like interactive expectation без ложного обещания QEMU или браузерной VM.",
+    "meta_intent": "Пользователь должен открывать detail page, видеть хвост реальной прошлой сессии, входить в отдельный interactive route по GET URL и продолжать работу в браузере через честный runtime flow поверх Codex CLI.",
+    "started_at": "2026-03-13T06:13:36Z"
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Выбрать Codex-native transport для interactive v1",
+      "description": "Сравнить `codex exec resume --json` и `codex app-server`, выбрать один transport для первой версии и явно зафиксировать, что PTY/QEMU/browser-VM не являются v1 базой.",
+      "context": "Без этого решения весь следующий дизайн будет шатким. Текущее detail page работает как artifact dossier с ask-only и не имеет attachable runtime flow. Kimi repo полезен как reference для replay + live stream, но не как прямой кодовый базис.",
+      "status": "ready_for_dev",
+      "meta_intent": "Избежать ложной архитектурной ставки и сразу строить первую версию на том surface, который реально существует у Codex CLI.",
+      "estimation": {
+        "hours": 6,
+        "story_points": 3
+      },
+      "dependencies": [],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть один выбранный transport для v1",
+        "У transport есть подтвержденный event surface без PTY scraping",
+        "Нефункциональные альтернативы явно признаны non-goals"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given валидная Codex session id, When backend transport probe запускается в выбранном режиме, Then система получает структурированные события продолжения сессии без эмуляции терминала.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-probe",
+                "action": "Проверка выбранного Codex transport на реальной локальной сессии",
+                "command": "python3 scripts/interactive_transport_probe.py --harness codex --session-id demo-session --transport auto --output tmp/interactive-probe/result.json",
+                "expected_output": "\"transport_supported\": true",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-probe"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given неподдерживаемый transport или отсутствующая session id, When probe запускается, Then система падает честно с понятной причиной и не обещает interactive flow.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-probe",
+                "action": "Проверка отказа для невалидного transport surface",
+                "command": "python3 scripts/interactive_transport_probe.py --harness codex --session-id missing-session --transport invalid",
+                "expected_output": "unsupported interactive transport",
+                "expected_exit_code": 1,
+                "teardown_command": "rm -rf tmp/interactive-probe"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "ready_for_dev",
+          "note": "Task created from kimi-like-web feasibility research."
+        }
+      ]
+    },
+    {
+      "id": "TASK-002",
+      "title": "Определить capability model для interactive route",
+      "description": "Расширить detail payload так, чтобы он честно сообщал: доступен ли interactive mode, по какому transport, почему disabled и какой GET route должен открываться.",
+      "context": "Сейчас state model знает только `read-only`, `ask-only` и `resume-allowed`, но не объясняет, существует ли browser continuation route и на чем он основан.",
+      "status": "ready_for_dev",
+      "meta_intent": "Пользователь должен видеть на detail page не абстрактный placeholder, а точное и честное обещание interactive capability.",
+      "estimation": {
+        "hours": 5,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-001"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Payload несет `interactive_session` capability block",
+        "Disabled state объясняет причину без двусмысленности",
+        "UI умеет строить GET interactive URL из payload"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given detail page для поддерживаемой Codex session, When artifact payload запрашивается, Then он содержит interactive capability, route href и transport label.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка payload для Codex interactive-capable session",
+                "command": "curl -s http://127.0.0.1:8000/api/session-artifacts/codex/demo-session.jsonl | jq '.session.state_model.interactive_session'",
+                "expected_output": "\"available\": true",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given detail page для harness без interactive support, When artifact payload запрашивается, Then capability явно disabled и содержит reason вместо ложного href.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка honest disabled state",
+                "command": "curl -s http://127.0.0.1:8000/api/session-artifacts/gemini/demo.json | jq '.session.state_model.interactive_session'",
+                "expected_output": "\"available\": false",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "ready_for_dev",
+          "note": "Task created with explicit dependency on transport choice."
+        }
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "title": "Добавить tail snapshot перед входом в interactive mode",
+      "description": "Сделать отдельный backend layer, который достает последние 3 сообщения, короткий summary и identity hints, чтобы interactive page открывалась не в пустоту.",
+      "context": "Пользователь прямо хочет видеть хвост предыдущей сессии до продолжения. Это должно опираться на source artifact и не зависеть от live runtime.",
+      "status": "ready_for_dev",
+      "meta_intent": "Interactive route должен ощущаться как продолжение уже понятной истории, а не как новый пустой чат.",
+      "estimation": {
+        "hours": 6,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-002"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть tail snapshot API или payload block",
+        "В interactive UI видны последние 3 сообщения",
+        "Snapshot строится из artifact и не мутирует source file"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given session с историей, When interactive page открывается, Then пользователь видит последние 3 сообщения и summary before live composer.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
+                "setup_command": "npm run build",
+                "action": "Проверка initial non-empty interactive state",
+                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"tail snapshot shows last messages\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given session без читаемой истории, When interactive page открывается, Then UI честно показывает empty-history notice и не ломает composer.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
+                "setup_command": "npm run build",
+                "action": "Проверка graceful empty-history fallback",
+                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"empty history fallback\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "ready_for_dev",
+          "note": "Task created from user requirement to avoid empty entry state."
+        }
+      ]
+    },
+    {
+      "id": "TASK-004",
+      "title": "Сделать отдельный operational layer для interactive sessions",
+      "description": "Создать отдельное runtime storage место для interactive continuation state, connection metadata и replay cache, не изменяя исходный session JSON или JSONL artifact.",
+      "context": "Product expectation прямо запрещает превращать source artifact в mutable runtime state. Нужен отдельный operational layer поверх artifact identity.",
+      "status": "backlog",
+      "meta_intent": "Сохранить source artifact как SSOT прошлого и не смешать его с live runtime слоем.",
+      "estimation": {
+        "hours": 6,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-001",
+        "TASK-002"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Source artifact остается read-only",
+        "Interactive runtime state хранится отдельно",
+        "Operational records можно безопасно удалять без потери artifact truth"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given interactive continuation starts, When runtime state is persisted, Then state is written to operational storage and the source artifact file hash stays unchanged.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-storage && ARTIFACT=tmp/interactive-storage/demo.jsonl && echo '{\"type\":\"session_meta\"}' > \"$ARTIFACT\" && sha256sum \"$ARTIFACT\" > tmp/interactive-storage/before.sha",
+                "action": "Проверка separation between source artifact and operational layer",
+                "command": "python3 scripts/interactive_storage_check.py --artifact \"$ARTIFACT\" --state-root tmp/interactive-storage/state && sha256sum \"$ARTIFACT\" > tmp/interactive-storage/after.sha && diff -u tmp/interactive-storage/before.sha tmp/interactive-storage/after.sha",
+                "expected_output": "interactive storage initialized",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-storage"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given interactive storage path is not writable, When continuation starts, Then backend returns a clear operational error and does not touch the artifact.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-storage && chmod 500 tmp/interactive-storage",
+                "action": "Проверка graceful failure for unwritable runtime store",
+                "command": "python3 scripts/interactive_storage_check.py --artifact demo.jsonl --state-root tmp/interactive-storage",
+                "expected_output": "interactive state store is not writable",
+                "expected_exit_code": 1,
+                "teardown_command": "chmod 700 tmp/interactive-storage && rm -rf tmp/interactive-storage"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task created as non-negotiable architectural safety rule."
+        }
+      ]
+    },
+    {
+      "id": "TASK-005",
+      "title": "Поднять backend supervisor для Codex interactive continuation",
+      "description": "Сделать backend-managed session supervisor, который умеет стартовать, останавливать и reconnect-ить continuation process для одной Codex session по browser route.",
+      "context": "Kimi-like expectation невозможен без long-lived process manager. Текущий websocket в проекте не управляет per-session stdin/stdout или structured live continuation.",
+      "status": "backlog",
+      "meta_intent": "Дать браузеру настоящий continuation flow вместо статического dossier плюс fake button.",
+      "estimation": {
+        "hours": 12,
+        "story_points": 8
+      },
+      "dependencies": [
+        "TASK-001",
+        "TASK-004"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть start/stop/status lifecycle на backend",
+        "Один browser client может reconnect-иться без потери consistency",
+        "Вторая conflicting session получает honest rejection or handoff"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given valid Codex session and authorized user, When interactive supervisor starts continuation, Then WebSocket client receives status transitions and live events from one managed runtime.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-supervisor",
+                "action": "Проверка supervisor lifecycle on one real session",
+                "command": "python3 -m pytest tests/test_interactive_supervisor.py -k lifecycle",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-supervisor"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given already busy interactive runtime for the same session, When a second conflicting continuation is requested, Then backend rejects it with a clear busy or ownership error.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-supervisor",
+                "action": "Проверка busy-session guard",
+                "command": "python3 -m pytest tests/test_interactive_supervisor.py -k busy_conflict",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-supervisor"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task created after identifying missing per-session runtime control plane."
+        }
+      ]
+    },
+    {
+      "id": "TASK-006",
+      "title": "Нормализовать Codex events в generic browser stream model",
+      "description": "Сделать event mapping для assistant text, reasoning, tool call, command output, approval request, user input request и unknown tool fallback.",
+      "context": "Пользователь хочет видеть в браузере примерно тот же процесс, что в терминале. Для v1 нужен generic rendering model, а не точная визуальная копия TUI.",
+      "status": "backlog",
+      "meta_intent": "Показать в браузере живую и понятную агентную хронологию, даже если отдельные tool UIs пока generic.",
+      "estimation": {
+        "hours": 10,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-001",
+        "TASK-005"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Основные типы событий нормализуются в один frontend contract",
+        "Unknown tool calls не ломают UI",
+        "Command output может стримиться chunk-wise"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given Codex emits reasoning, tool calls and command output, When browser stream receives them, Then UI model preserves ordering and renders each event with a stable generic type.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка event normalization contract",
+                "command": "python3 -m pytest tests/test_interactive_event_normalization.py",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given stream contains unknown event or tool type, When browser reducer processes it, Then UI falls back to generic event block instead of crashing.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка unknown-event fallback",
+                "command": "python3 -m pytest tests/test_interactive_event_normalization.py -k unknown_fallback",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task created from requirement to show terminal-like process in browser."
+        }
+      ]
+    },
+    {
+      "id": "TASK-007",
+      "title": "Добавить GET route и CTA для interactive mode",
+      "description": "Сделать route `/sessions/[harness]/[id]/interactive`, кнопку перехода на detail page и honest disabled states на неподдерживаемых harnesses.",
+      "context": "Пользователь хочет отдельную кнопку и возможность зайти по прямому GET URL. Это должно быть адресуемо так же надежно, как текущий detail route.",
+      "status": "backlog",
+      "meta_intent": "Interactive mode должен быть не hidden feature, а первый-class route в session detail workflow.",
+      "estimation": {
+        "hours": 6,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-002",
+        "TASK-003",
+        "TASK-005"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "На detail page есть явный interactive CTA",
+        "GET route открывается напрямую",
+        "Disabled state не обещает недоступный harness flow"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given Codex detail page with interactive support, When user clicks the CTA or opens the interactive URL directly, Then browser lands on the interactive page for the same session artifact.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
+                "setup_command": "npm run build",
+                "action": "Проверка CTA и direct GET route",
+                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"detail CTA opens interactive route\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given unsupported harness detail page, When user inspects future actions, Then CTA is disabled and the reason is visible instead of a broken link.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
+                "setup_command": "npm run build",
+                "action": "Проверка unsupported harness guard",
+                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"unsupported harness disables interactive CTA\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task created from requirement for button plus direct GET route."
+        }
+      ]
+    },
+    {
+      "id": "TASK-008",
+      "title": "Сделать Codex-first live UI для browser continuation",
+      "description": "Построить interactive page layout: tail snapshot, live timeline, status bar, composer, tool blocks, command output blocks и fallback cards for unknown events.",
+      "context": "Визуально это и есть то, что приблизит продукт к kimi-web-like expectation. При этом first version может быть generic and honest, без попытки копировать Codex TUI пиксель-в-пиксель.",
+      "status": "backlog",
+      "meta_intent": "Пользователь должен видеть, что браузер реально продолжает агентную сессию, а не просто показывает лог.",
+      "estimation": {
+        "hours": 14,
+        "story_points": 8
+      },
+      "dependencies": [
+        "TASK-003",
+        "TASK-006",
+        "TASK-007"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Interactive UI показывает replay и live continuation in one flow",
+        "Composer usable after history replay",
+        "Tool and command events читаются глазами без debug-noise"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given live continuation starts after history replay, When user sends a prompt, Then UI shows submitted state, streamed events and final assistant result in one coherent timeline.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
+                "setup_command": "npm run build",
+                "action": "Проверка full interactive happy path",
+                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"interactive prompt roundtrip\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given backend returns an initialization error for live continuation, When interactive page opens, Then UI shows error state and keeps the read-only tail visible instead of blanking out.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
+                "setup_command": "npm run build",
+                "action": "Проверка initialization error UI",
+                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"interactive initialization error keeps tail\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task created for the main user-visible browser experience."
+        }
+      ]
+    },
+    {
+      "id": "TASK-009",
+      "title": "Добавить auth, safety и concurrency guardrails",
+      "description": "Ограничить interactive route авторизацией, session ownership, same-origin policy, idle cleanup, reconnect policy и protection against duplicate writers.",
+      "context": "Kimi web показывает, что web session flow требует security and lifecycle rules. У нас detail page уже живет на auth cookie, но interactive route будет чувствительнее, потому что он запускает runtime continuation.",
+      "status": "backlog",
+      "meta_intent": "Interactive mode должен быть не только впечатляющим, но и безопасным, особенно на опубликованном URL.",
+      "estimation": {
+        "hours": 8,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-005",
+        "TASK-007"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Unauthorized access blocked",
+        "Second writer or hijack path blocked clearly",
+        "Idle interactive runtime is cleaned up predictably"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given authenticated owner opens interactive route, When continuation is started, Then route works normally and reconnect uses the same authorized session context.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка authorized interactive access",
+                "command": "python3 -m pytest tests/test_interactive_auth.py -k authorized_owner",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given unauthenticated or foreign client opens interactive route, When websocket or start endpoint is requested, Then access is denied before runtime starts.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка unauthorized interactive rejection",
+                "command": "python3 -m pytest tests/test_interactive_auth.py -k unauthorized_rejected",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task created as a mandatory published-runtime safety layer."
+        }
+      ]
+    },
+    {
+      "id": "TASK-010",
+      "title": "Подтвердить published interactive flow через Playwright и live deploy",
+      "description": "Добавить local and published E2E flow для interactive route, затем rebuild и republish published URL before asking the user to test.",
+      "context": "По правилам репозитория major UI/runtime change нельзя закрывать без published verification. Interactive route особенно нельзя объявить готовым только по локальным тестам.",
+      "status": "backlog",
+      "meta_intent": "Подтвердить, что пользователь реально увидит рабочую опубликованную interactive page, а не только локальный prototype.",
+      "estimation": {
+        "hours": 8,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-008",
+        "TASK-009"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть Playwright coverage для published interactive page",
+        "Published URL проходит smoke и confidence checks",
+        "Пользователь получает уже рабочий deployed route"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given published stack has the interactive route, When smoke pipeline opens the route on a valid session, Then page renders tail snapshot, composer and live status without loading deadlock.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "make published-restore",
+                "action": "Проверка published interactive happy path",
+                "command": "cd frontend && npx playwright test e2e/published-url.spec.ts --grep \"published interactive route works\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given published route cannot establish live continuation, When smoke pipeline opens the page, Then the page shows an honest degraded state and the test fails if it hangs or shows blank content.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "make published-restore",
+                "action": "Проверка degraded but honest failure mode",
+                "command": "cd frontend && npx playwright test e2e/published-url.spec.ts --grep \"published interactive degraded state is honest\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "touched_files": []
+      },
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:13:36Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task created from published deploy rule for major UI/runtime changes."
+        }
+      ]
+    }
+  ]
+}

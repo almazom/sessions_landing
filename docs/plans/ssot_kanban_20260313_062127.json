@@ -1,0 +1,1269 @@
+{
+  "meta": {
+    "version": "1.5.0",
+    "description": "Single Source of Truth - Kanban Board for Closed-Loop Autonomous Development",
+    "workflow_states": [
+      "backlog",
+      "ready_for_dev",
+      "in_progress",
+      "simplification_step",
+      "auto_commit_step",
+      "reproduce_step",
+      "done",
+      "failed_reproduction",
+      "blocked_needs_human"
+    ],
+    "csm_rules": {
+      "threshold": 95,
+      "calculation_method": "strict_percentage",
+      "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
+      "max_reproduction_attempts": 3
+    },
+    "last_updated": "2026-03-13T06:21:27Z"
+  },
+  "workflow_triggers": {
+    "simplification_step": {
+      "primary_skill": "$code-simplifier",
+      "fallback_url": "http://simp.ly/publish/2M2QdC",
+      "fallback_command": "curl -s http://simp.ly/publish/2M2QdC"
+    },
+    "auto_commit_step": {
+      "primary_skill": "$auto-commit",
+      "fallback_url": "http://simp.ly/publish/hV4mzj",
+      "fallback_command": "curl -s http://simp.ly/publish/hV4mzj"
+    },
+    "reproduce_step": {
+      "primary_skill": "$reproduce",
+      "fallback_url": "http://simp.ly/publish/rLThw7",
+      "fallback_command": "curl -s http://simp.ly/publish/rLThw7"
+    }
+  },
+  "session": {
+    "id": "sess-kimi-like-web-fusion-20260313",
+    "goal": "Довести Agent Nexus до Codex-first kimi-web-like interactive page на отдельном URL без ложного QEMU или PTY-переобещания.",
+    "meta_intent": "Пользователь должен открывать session detail page, видеть честный хвост и replay сессии, переходить по dedicated GET URL в interactive mode и продолжать Codex session в браузере через стабильный runtime flow с published verification.",
+    "started_at": "2026-03-13T06:21:27Z"
+  },
+  "tasks": [
+    {
+      "id": "TASK-000",
+      "title": "Создать deterministic fixture и verification harness",
+      "description": "Подготовить воспроизводимый базис для всего interactive направления: fixture Codex artifact, fixture identity mapping, transport probe skeleton, artifact hash helper, backend test harness и frontend Playwright skeleton.",
+      "context": "Коллективный review показал, что без fixture/bootstrap план остаётся roadmap, а не автономным SSOT. Почти все поздние green/red paths сейчас опираются на файлы и тесты, которых ещё нет.",
+      "status": "ready_for_dev",
+      "meta_intent": "Сделать все последующие задачи реально воспроизводимыми без скрытого ambient state и без ручного угадывания.",
+      "estimation": {
+        "hours": 8,
+        "story_points": 5
+      },
+      "dependencies": [],
+      "definition_of_done": [
+        "Fixture layer exists for backend and frontend",
+        "Reproduction commands use real files and tests",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть fixture Codex session artifact с реальным session id и user/assistant history",
+        "Есть helper для artifact hash before/after interactive run",
+        "Есть backend и Playwright harness для later tasks"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given чистое repo state, When bootstrap fixture task выполняется, Then в репозитории появляются deterministic fixtures, helper scripts и базовые tests для interactive flow.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/kanban-fixture-check",
+                "action": "Проверка fixture bootstrap на локальном репозитории",
+                "command": "python3 -m pytest tests/test_interactive_fixtures.py -k bootstrap",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/kanban-fixture-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given отсутствует fixture root или fixture metadata повреждена, When bootstrap validation запускается, Then система падает честно с clear fixture error.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/kanban-fixture-check",
+                "action": "Проверка graceful failure для broken fixture metadata",
+                "command": "python3 scripts/check_interactive_fixtures.py --root tmp/kanban-fixture-check/missing",
+                "expected_output": "interactive fixtures are missing",
+                "expected_exit_code": 1,
+                "teardown_command": "rm -rf tmp/kanban-fixture-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "ready_for_dev",
+          "note": "Fusion review promoted fixture/bootstrap as the real first task."
+        }
+      ]
+    },
+    {
+      "id": "TASK-001",
+      "title": "Выбрать Codex transport и зафиксировать ADR",
+      "description": "Сравнить `codex exec resume --json` и `codex app-server`, выбрать primary transport и fallback policy, доказать выбор на fixture-backed session и выпустить transport ADR.",
+      "context": "Review consensus: v1 должен быть Codex-native, но нельзя предполагать, что один transport гарантированно достаточен. Нужны primary path, fallback policy и реальный probe.",
+      "status": "backlog",
+      "meta_intent": "Убрать архитектурную неоднозначность и выбрать runtime surface, на котором можно честно построить browser continuation.",
+      "estimation": {
+        "hours": 6,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-000"
+      ],
+      "definition_of_done": [
+        "Transport decision is documented",
+        "Primary and fallback policy are explicit",
+        "Probe works on a fixture-backed session",
+        "Code and docs are simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть ADR с primary transport и fallback decision",
+        "Есть реальный probe result на fixture-backed session",
+        "План не обещает PTY или QEMU semantics"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given fixture Codex session exists, When transport probe запускается в auto mode, Then система выбирает supported transport и возвращает structured support verdict.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/interactive-fixture",
+                "action": "Проверка transport probe на реальной fixture session",
+                "command": "python3 scripts/interactive_transport_probe.py --fixture tmp/interactive-fixture/session.json --transport auto --output tmp/interactive-fixture/probe.json",
+                "expected_output": "\"transport_supported\": true",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-fixture"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given transport недоступен или session fixture невалидна, When probe запускается, Then система возвращает unsupported verdict и clear reason without fake success.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-fixture && echo '{}' > tmp/interactive-fixture/bad.json",
+                "action": "Проверка unsupported transport verdict",
+                "command": "python3 scripts/interactive_transport_probe.py --fixture tmp/interactive-fixture/bad.json --transport invalid",
+                "expected_output": "unsupported interactive transport",
+                "expected_exit_code": 1,
+                "teardown_command": "rm -rf tmp/interactive-fixture"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Blocked behind deterministic fixture creation."
+        }
+      ]
+    },
+    {
+      "id": "TASK-002",
+      "title": "Разрешить artifact-to-runtime session identity",
+      "description": "Сделать явный mapping от `harness/artifact_id` к resumable Codex session or thread identity, включая mismatch handling, fallback resolution и persisted operational identity.",
+      "context": "Один из strongest review points: dedicated URL у нас artifact-addressed, а Codex continuation runtime требует другой identity layer. Без него `/interactive` остаётся иллюзией.",
+      "status": "backlog",
+      "meta_intent": "Связать текущую detail-route identity с реальным Codex continuation target без мутации source artifact.",
+      "estimation": {
+        "hours": 6,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-000",
+        "TASK-001"
+      ],
+      "definition_of_done": [
+        "Identity mapping rules are explicit",
+        "Mismatch and fallback cases are tested",
+        "Operational identity is stored outside the source artifact",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Можно детерминированно найти Codex runtime identity из artifact route",
+        "Broken or missing identity не приводит к silent failure",
+        "Source artifact не меняется during identity resolution"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given valid artifact route and fixture rollout metadata, When identity resolution запускается, Then система возвращает stable resumable Codex identity.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/identity-fixture",
+                "action": "Проверка artifact-to-runtime identity resolution",
+                "command": "python3 -m pytest tests/test_interactive_identity.py -k resolves_runtime_identity",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/identity-fixture"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given artifact metadata повреждена или runtime identity отсутствует, When identity resolution запускается, Then backend возвращает disabled interactive reason и no fake href.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/identity-fixture --broken-runtime-id",
+                "action": "Проверка honest disabled identity state",
+                "command": "python3 -m pytest tests/test_interactive_identity.py -k missing_runtime_identity",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/identity-fixture"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Fusion review added this as a missing prerequisite task."
+        }
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "title": "Определить interactive contract и boot payload",
+      "description": "Зафиксировать JSON contract для interactive capability, dedicated route, boot payload, runtime status snapshot, disabled reasons и unsupported-harness fallback policy.",
+      "context": "Несколько reviews сошлись на том, что current state_model нельзя просто перегрузить. Нужен отдельный contract boundary между detail page, interactive page и runtime supervisor.",
+      "status": "backlog",
+      "meta_intent": "Сделать `/interactive` route bootstrap deterministic и server-driven, а не client-side guesswork.",
+      "estimation": {
+        "hours": 5,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-001",
+        "TASK-002"
+      ],
+      "definition_of_done": [
+        "Interactive contract schema is explicit",
+        "Boot payload is testable",
+        "Unsupported harness and disabled reasons are explicit",
+        "Code and docs are simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть поля `available`, `reason_disabled`, `transport`, `interactive_href`, `replay_available`, `runtime_status`",
+        "Dedicated interactive route bootstraps from one server payload",
+        "Other harnesses have honest fallback policy"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given supported Codex artifact route, When interactive boot payload запрашивается, Then API возвращает one-shot payload with identity, route, replay availability and runtime snapshot.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/boot-fixture",
+                "action": "Проверка server-driven boot payload contract",
+                "command": "python3 -m pytest tests/test_interactive_boot_contract.py -k boot_payload_supported",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/boot-fixture"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given unsupported harness or disabled runtime capability, When boot payload запрашивается, Then API возвращает degraded read-only contract with explicit disabled reason and no broken boot guesswork.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка degraded boot payload",
+                "command": "python3 -m pytest tests/test_interactive_boot_contract.py -k boot_payload_disabled",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Fusion review added explicit boot contract boundary."
+        }
+      ]
+    },
+    {
+      "id": "TASK-004",
+      "title": "Построить replay snapshot и replay extraction",
+      "description": "Извлечь artifact-derived tail snapshot и canonical replay log так, чтобы interactive page могла входить не в пустую сессию, а в continuity-preserving history layer.",
+      "context": "Reviews отвергли идею, что `last 3 messages` достаточно. Нужны и tail snapshot для UX, и полный replay source для real continuation feel.",
+      "status": "backlog",
+      "meta_intent": "Сделать browser entry mode похожим на real continuation, а не на новый пустой чат с summary badge.",
+      "estimation": {
+        "hours": 7,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-000",
+        "TASK-002",
+        "TASK-003"
+      ],
+      "definition_of_done": [
+        "Tail snapshot and replay extraction exist",
+        "Replay source is deterministic",
+        "No mutation happens to source artifact",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Interactive page can show last 3 messages plus canonical replay source",
+        "Replay extraction preserves ordering",
+        "No-history sessions degrade honestly"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given fixture session with history, When replay extraction запускается, Then system returns tail snapshot and canonical replay items in stable order.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/replay-fixture",
+                "action": "Проверка replay extraction and tail snapshot",
+                "command": "python3 -m pytest tests/test_interactive_replay_source.py -k replay_source_happy_path",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/replay-fixture"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given session without readable history, When replay extraction запускается, Then API returns empty-history contract without crashing composer boot.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/replay-fixture --no-history",
+                "action": "Проверка empty-history replay fallback",
+                "command": "python3 -m pytest tests/test_interactive_replay_source.py -k replay_source_empty_history",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/replay-fixture"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Tail snapshot was expanded into a real replay-source task."
+        }
+      ]
+    },
+    {
+      "id": "TASK-005",
+      "title": "Зафиксировать replay-to-live boundary и runtime status contract",
+      "description": "Определить и реализовать boundary между replay phase и live continuation: `replay_started`, replay items, `replay_complete`, initial runtime status snapshot, runtime init failure semantics и no-duplication guarantees.",
+      "context": "Это самый устойчивый gap across reviews. Kimi-web-like experience держится не на summary, а на честном переходе replay -> live.",
+      "status": "backlog",
+      "meta_intent": "Сделать момент перехода в live continuation понятным, стабильным и безопасным для browser UI.",
+      "estimation": {
+        "hours": 8,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-003",
+        "TASK-004"
+      ],
+      "definition_of_done": [
+        "Replay-live cutover contract is explicit",
+        "Runtime status snapshot exists",
+        "Replay success plus runtime init failure has honest degraded semantics",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "There is one canonical handoff from replay to live",
+        "UI can distinguish replay phase from runtime phase",
+        "Partial replay or init failure does not blank the page"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given replay source and runtime transport are available, When interactive stream boots, Then replay completes first and only then live runtime status is exposed as ready.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/replay-live-fixture",
+                "action": "Проверка replay-to-live cutover semantics",
+                "command": "python3 -m pytest tests/test_interactive_replay_live_boundary.py -k replay_then_live",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/replay-live-fixture"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given replay succeeds but runtime initialization fails, When interactive stream boots, Then page stays readable with replay content and explicit degraded runtime status.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/replay-live-fixture --runtime-init-fails",
+                "action": "Проверка degraded state after replay success",
+                "command": "python3 -m pytest tests/test_interactive_replay_live_boundary.py -k replay_ok_runtime_fail",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/replay-live-fixture"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Fusion review elevated replay-live rigor to a dedicated task."
+        }
+      ]
+    },
+    {
+      "id": "TASK-006",
+      "title": "Сделать operational state store с crash recovery и GC",
+      "description": "Создать отдельное operational storage место для runtime state, resolved runtime identity, replay metadata, crash markers, TTL и garbage-collection rules без изменения source artifact.",
+      "context": "Initial plan уже понимал separation, но review добавил crash recovery, orphan cleanup и persisted replay metadata как обязательные части.",
+      "status": "backlog",
+      "meta_intent": "Сохранить source artifact как truth прошлого и не потерять управляемость live continuation после disconnect или restart.",
+      "estimation": {
+        "hours": 8,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-002",
+        "TASK-005"
+      ],
+      "definition_of_done": [
+        "Operational store is separate from the source artifact",
+        "Crash-recovery markers and GC rules exist",
+        "Artifact hash remains unchanged during runtime state writes",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Operational state can survive reconnect and backend restart",
+        "Orphaned sessions are collectible",
+        "Source artifact stays immutable"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given interactive runtime starts, When operational state is persisted, Then runtime metadata is written outside the artifact and artifact hash remains unchanged.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/store-fixture && sha256sum tmp/store-fixture/session.jsonl > tmp/store-fixture/before.sha",
+                "action": "Проверка operational store separation and artifact immutability",
+                "command": "python3 -m pytest tests/test_interactive_store.py -k store_happy_path && sha256sum tmp/store-fixture/session.jsonl > tmp/store-fixture/after.sha && diff -u tmp/store-fixture/before.sha tmp/store-fixture/after.sha",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/store-fixture"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given operational state root is unwritable, When runtime persistence begins, Then backend returns a clear store error and does not mutate the source artifact.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/store-fixture/locked && chmod 500 tmp/store-fixture/locked",
+                "action": "Проверка graceful failure for unwritable state root",
+                "command": "python3 -m pytest tests/test_interactive_store.py -k unwritable_store_root",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "chmod 700 tmp/store-fixture/locked && rm -rf tmp/store-fixture"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Crash recovery and GC were added to the operational layer task."
+        }
+      ]
+    },
+    {
+      "id": "TASK-007",
+      "title": "Поднять interactive supervisor и lifecycle rules",
+      "description": "Сделать backend supervisor для per-session Codex continuation: start, stop, status, busy lock, single-writer policy, reconnect ownership, backend restart behavior и cleanup reason semantics.",
+      "context": "Текущий app websocket не про per-session continuation. Reviews подчеркнули, что lifecycle and ownership rules должны быть first-class, а не побочным эффектом auth.",
+      "status": "backlog",
+      "meta_intent": "Дать browser interactive page настоящий runtime control plane, а не имитацию живого режима.",
+      "estimation": {
+        "hours": 12,
+        "story_points": 8
+      },
+      "dependencies": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-005",
+        "TASK-006"
+      ],
+      "definition_of_done": [
+        "Supervisor manages one runtime per interactive session",
+        "Busy, lock, reconnect and restart rules are explicit",
+        "Cleanup and crash behavior are observable",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Single writer policy is enforced",
+        "Reconnect does not create duplicate writers",
+        "Supervisor restart or crash has an honest recovery behavior"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given valid interactive session identity and supported transport, When supervisor starts, Then one managed runtime becomes available and emits lifecycle status updates.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/supervisor-fixture",
+                "action": "Проверка interactive supervisor lifecycle",
+                "command": "python3 -m pytest tests/test_interactive_supervisor.py -k lifecycle_happy_path",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/supervisor-fixture"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given same interactive session already has an active writer, When another writer tries to attach, Then supervisor rejects it with a clear busy or ownership error.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/supervisor-fixture",
+                "action": "Проверка duplicate writer rejection",
+                "command": "python3 -m pytest tests/test_interactive_supervisor.py -k duplicate_writer_rejected",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/supervisor-fixture"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Lifecycle rules were strengthened with lock, reconnect and restart semantics."
+        }
+      ]
+    },
+    {
+      "id": "TASK-008",
+      "title": "Нормализовать browser event stream",
+      "description": "Определить и реализовать normalized outbound event model для assistant text, reasoning, tool calls, command output, runtime status, degraded states, busy rejection и duplicate-event tolerance on reconnect.",
+      "context": "Reviews сошлись: generic rendering допустим, но без stable ids, ordering guarantees и replay/live merge правил UI будет хрупким.",
+      "status": "backlog",
+      "meta_intent": "Сделать live browser timeline читаемым и устойчивым даже при reconnect и unknown event types.",
+      "estimation": {
+        "hours": 9,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-005",
+        "TASK-007"
+      ],
+      "definition_of_done": [
+        "Outbound event schema is normalized",
+        "Stable ids and ordering guarantees exist",
+        "Reconnect duplicate tolerance exists",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Replay + live merge keeps stable order",
+        "Unknown events degrade to safe generic blocks",
+        "Busy-session rejection becomes a UI-safe normalized event"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given runtime emits reasoning, tool calls and command output, When browser stream reducer processes them, Then events keep stable order and correlation ids.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка event normalization with ordering guarantees",
+                "command": "python3 -m pytest tests/test_interactive_event_normalization.py -k stable_order_and_ids",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given runtime emits unknown event or reconnect duplicates, When reducer processes them, Then UI degrades safely instead of crashing or duplicating visible timeline irreparably.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка unknown and duplicate event tolerance",
+                "command": "python3 -m pytest tests/test_interactive_event_normalization.py -k unknown_or_duplicate_tolerance",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Event normalization was tightened with ids, order and duplicate tolerance."
+        }
+      ]
+    },
+    {
+      "id": "TASK-009",
+      "title": "Реализовать browser-to-runtime control actions",
+      "description": "Сделать bidirectional action channel для prompt submit, cancel, approval response, question or request-user-input response и invalid-state handling when the session is busy.",
+      "context": "One backend review explicitly pointed out the missing inbound side. Kimi-like continuation невозможен, если browser только читает stream, но не умеет отвечать runtime.",
+      "status": "backlog",
+      "meta_intent": "Сделать interactive page реально interactive, а не live log viewer.",
+      "estimation": {
+        "hours": 9,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-003",
+        "TASK-007",
+        "TASK-008"
+      ],
+      "definition_of_done": [
+        "Inbound action schema is explicit",
+        "Prompt, cancel and approval paths are wired",
+        "Busy invalid-state errors are honest and recoverable",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Browser can send a prompt and receive continuation output",
+        "Approval or user-input requests have a response path",
+        "Cancel and busy-state semantics are deterministic"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given live interactive session is ready, When browser sends prompt and receives an approval or question flow, Then response roundtrip completes through the same control channel.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка browser-to-runtime action roundtrip",
+                "command": "python3 -m pytest tests/test_interactive_control_actions.py -k prompt_and_approval_roundtrip",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given session is busy or a control action is invalid, When browser sends a new action, Then backend returns a clear invalid-state response instead of silent failure.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка busy-state and invalid action handling",
+                "command": "python3 -m pytest tests/test_interactive_control_actions.py -k busy_or_invalid_action",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Fusion review added missing inbound interaction task."
+        }
+      ]
+    },
+    {
+      "id": "TASK-010",
+      "title": "Построить dedicated interactive route и frontend state machine",
+      "description": "Сделать `/sessions/[harness]/[id]/interactive`, CTA с detail page и explicit frontend states: `loading_history`, `history_ready`, `connecting_runtime`, `live_ready`, `reconnecting`, `degraded_read_only`, `runtime_error`.",
+      "context": "Frontend and Kimi-pattern reviews сошлись: route должен bootstrappиться server-side, не blank-screen-ить, и честно показывать degraded states и unsupported harness behavior.",
+      "status": "backlog",
+      "meta_intent": "Сделать direct GET URL first-class surface для real interactive continuation, а не hidden experimental panel.",
+      "estimation": {
+        "hours": 12,
+        "story_points": 8
+      },
+      "dependencies": [
+        "TASK-003",
+        "TASK-004",
+        "TASK-005",
+        "TASK-008",
+        "TASK-009"
+      ],
+      "definition_of_done": [
+        "Dedicated route exists",
+        "CTA and direct URL both work",
+        "Frontend state machine is explicit",
+        "Unsupported and degraded states are honest",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "User can open interactive route directly by URL",
+        "Page shows replay before or during live runtime boot",
+        "No blank screen appears on unsupported or degraded entry"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given supported Codex detail page and boot payload, When user opens interactive route via CTA or direct URL, Then page renders history first and transitions into live-ready state.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
+                "setup_command": "npm run build",
+                "action": "Проверка dedicated route and state machine happy path",
+                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"interactive route history to live ready\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given unsupported harness or stale session boot, When user opens direct interactive URL, Then page renders degraded read-only mode with explicit reason instead of blank or broken state.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
+                "setup_command": "npm run build",
+                "action": "Проверка degraded direct-entry behavior",
+                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"interactive route degraded direct entry\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Interactive route task was rewritten around explicit browser states."
+        }
+      ]
+    },
+    {
+      "id": "TASK-011",
+      "title": "Добавить auth, ownership, resource limits и observability",
+      "description": "Укрепить interactive route authorization, session ownership, second-writer policy, idle timeout, runtime limits, audit logs, per-session diagnostics, replay-live phase trace и cleanup reasons.",
+      "context": "Reviews сошлись, что safety and auth нельзя отделять от runtime rules, а observability нужна для honest reproduction loops and published debugging.",
+      "status": "backlog",
+      "meta_intent": "Сделать interactive continuation безопасным и дебажимым на опубликованном URL, а не только локально впечатляющим.",
+      "estimation": {
+        "hours": 10,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-006",
+        "TASK-007",
+        "TASK-010"
+      ],
+      "definition_of_done": [
+        "Auth and ownership are enforced",
+        "Resource limits and cleanup rules exist",
+        "Runtime diagnostics are visible",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Unauthorized interactive access is denied before runtime start",
+        "Idle or orphaned sessions are cleaned predictably",
+        "Failure diagnostics are discoverable from logs or status endpoints"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given authenticated owner opens interactive route, When runtime starts and later reconnects, Then ownership, logs and status traces remain consistent.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка auth, ownership and diagnostics happy path",
+                "command": "python3 -m pytest tests/test_interactive_auth_and_observability.py -k owner_happy_path",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given unauthenticated client or second writer attempts access, When interactive start or websocket connect is requested, Then runtime does not start and backend records a clear rejection reason.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "true",
+                "action": "Проверка unauthorized and second-writer rejection",
+                "command": "python3 -m pytest tests/test_interactive_auth_and_observability.py -k unauthorized_or_second_writer",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Observability and resource rules were merged into the runtime safety layer."
+        }
+      ]
+    },
+    {
+      "id": "TASK-012",
+      "title": "Подтвердить local replay, reconnect и lifecycle proof",
+      "description": "Добавить explicit local proof before deploy: route open, replay completes before composer unlock, prompt roundtrip, reconnect after partial stream, busy-session rejection, init error fallback и artifact immutability after interactive use.",
+      "context": "Verification review чётко указал, что published verification слишком поздний этап без local smoke and lifecycle proof.",
+      "status": "backlog",
+      "meta_intent": "Зафиксировать, что browser continuation реально работает локально и не ломает source artifact ещё до published deploy.",
+      "estimation": {
+        "hours": 8,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-010",
+        "TASK-011"
+      ],
+      "definition_of_done": [
+        "Local Playwright and backend lifecycle proofs exist",
+        "Artifact immutability is proven end-to-end",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Replay and reconnect are locally verified",
+        "Busy and init-error states are locally verified",
+        "Artifact hash is unchanged after local interactive flow"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given local app and fixture session are running, When Playwright opens interactive route and sends a prompt, Then replay completes before composer unlock and prompt roundtrip succeeds.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/start_local_interactive_fixture_stack.py --fixture tmp/local-proof && cd frontend && npm run build",
+                "action": "Проверка local interactive happy path and artifact immutability",
+                "command": "cd frontend && npx playwright test e2e/interactive-session.spec.ts --grep \"local interactive happy path\" && python3 ../scripts/check_artifact_hash_unchanged.py --fixture ../tmp/local-proof",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "python3 scripts/stop_local_interactive_fixture_stack.py --fixture tmp/local-proof && rm -rf tmp/local-proof"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given websocket drops during replay or a second prompt is sent while busy, When local interactive checks run, Then page degrades honestly and busy rejection is visible without hanging.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "python3 scripts/start_local_interactive_fixture_stack.py --fixture tmp/local-proof --flaky-replay && cd frontend && npm run build",
+                "action": "Проверка local replay interruption and busy rejection",
+                "command": "cd frontend && npx playwright test e2e/interactive-session.spec.ts --grep \"local replay reconnect and busy rejection\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "python3 scripts/stop_local_interactive_fixture_stack.py --fixture tmp/local-proof && rm -rf tmp/local-proof"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Local proof was promoted to a dedicated pre-published gate."
+        }
+      ]
+    },
+    {
+      "id": "TASK-013",
+      "title": "Сделать published deploy proof для interactive route",
+      "description": "Выполнить rebuild and republish, затем published verification через `make published-restore`, smoke, confidence, degraded-state checks, auth checks, reconnect checks, log capture и summary-path evidence.",
+      "context": "Repo rules for major UI/runtime work требуют published proof. Reviews усилили это: нужны не только route smoke, но и confidence output, logs и honest degraded-state checks.",
+      "status": "backlog",
+      "meta_intent": "Дойти до состояния, когда пользователь реально видит working deployed interactive page на dedicated URL, а не локальный prototype.",
+      "estimation": {
+        "hours": 8,
+        "story_points": 5
+      },
+      "dependencies": [
+        "TASK-012"
+      ],
+      "definition_of_done": [
+        "Published stack is restored",
+        "Published route smoke and confidence checks pass",
+        "Logs and summary paths are recorded",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Published interactive route opens and shows replay/live progression",
+        "Published degraded and unauthorized states are honest",
+        "Smoke and confidence summary paths are stored as evidence"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given published stack is restored, When Playwright opens a valid interactive route, Then the page renders replay, reaches live-ready or honest runtime state, and published diagnostics capture smoke and confidence summaries.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "make published-restore",
+                "action": "Проверка published interactive happy path with recorded evidence",
+                "command": "cd frontend && npx playwright test e2e/published-url.spec.ts --grep \"published interactive route works\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given published runtime cannot start or websocket drops after replay, When published interactive checks run, Then page stays readable with explicit degraded reason, unauthorized access is denied, and failure evidence is visible in smoke, confidence and logs.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "make published-restore",
+                "action": "Проверка published degraded, unauthorized and reconnect failure modes",
+                "command": "cd frontend && npx playwright test e2e/published-url.spec.ts --grep \"published interactive degraded and unauthorized states\"",
+                "expected_output": "1 passed",
+                "expected_exit_code": 0,
+                "teardown_command": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:21:27Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Published gate was strengthened with restore, confidence, logs and degraded-state evidence."
+        }
+      ]
+    }
+  ]
+}
