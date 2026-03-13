@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T12:20:10Z",
+    "last_updated": "2026-03-13T12:26:30Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -3444,9 +3444,9 @@
         "passed_red_steps": 1,
         "total_red_steps": 1,
         "touched_files": [
+          "backend/api/interactive_supervisor.py",
           "docs/plans/ssot_kanban_20260313_062127.json",
-          "tests/interactive/replay_store_bundle.py",
-          "tests/interactive/test_task_048.py"
+          "tests/interactive/test_task_026.py"
         ],
         "last_failure_note": null
       },
@@ -3541,9 +3541,9 @@
         "passed_red_steps": 1,
         "total_red_steps": 1,
         "touched_files": [
-          "backend/api/interactive_supervisor.py",
+          "backend/api/interactive_events.py",
           "docs/plans/ssot_kanban_20260313_062127.json",
-          "tests/interactive/test_task_026.py"
+          "tests/interactive/test_task_027.py"
         ],
         "last_failure_note": null
       },
@@ -3556,34 +3556,34 @@
           "note": "Task resized to fit <=4h and <=4 story points."
         },
         {
-          "timestamp": "2026-03-13T12:17:20Z",
+          "timestamp": "2026-03-13T12:23:30Z",
           "from_status": "backlog",
           "to_status": "in_progress",
-          "note": "Activated after supervisor start/resume landed and stop/cancel became the next lifecycle blocker."
+          "note": "Activated after supervisor stop/cancel flow closed and event normalization became the next event-stream blocker."
         },
         {
-          "timestamp": "2026-03-13T12:19:05Z",
+          "timestamp": "2026-03-13T12:25:20Z",
           "from_status": "in_progress",
           "to_status": "simplification_step",
-          "note": "Supervisor stop/cancel helper and green/red task checks passed with owner-checked release semantics."
+          "note": "Core thread event normalization and green/red task checks passed against Codex SDK item shapes."
         },
         {
-          "timestamp": "2026-03-13T12:19:25Z",
+          "timestamp": "2026-03-13T12:25:40Z",
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
-          "note": "Supervisor stop fixture setup and operation selection were simplified without changing behavior."
+          "note": "Unsupported item type checks were consolidated to keep the normalizer explicit and small."
         },
         {
-          "timestamp": "2026-03-13T12:19:45Z",
+          "timestamp": "2026-03-13T12:26:00Z",
           "from_status": "auto_commit_step",
           "to_status": "reproduce_step",
-          "note": "Atomic task-026 commit content was prepared after pytest and py_compile checks passed."
+          "note": "Atomic task-027 commit content was prepared after pytest and py_compile checks passed."
         },
         {
-          "timestamp": "2026-03-13T12:20:10Z",
+          "timestamp": "2026-03-13T12:26:30Z",
           "from_status": "reproduce_step",
           "to_status": "done",
-          "note": "Green and red supervisor stop/cancel commands passed with CSM 100."
+          "note": "Green and red core event normalization commands passed with CSM 100."
         }
       ],
       "lane": "event-stream",
