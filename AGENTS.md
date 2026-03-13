@@ -292,6 +292,8 @@ Failure handling:
 Pacing and persistence:
 
 - run the Kanban process continuously task by task
+- when an active SSOT Kanban exists, non-stop execution is mandatory until every in-scope card reaches a terminal state
+- do not pause the implementation loop after a completed card; immediately advance the next eligible card through the trello-like states in the JSON
 - do not stop at planning if implementation is possible
 - do not stop at local coding if reproduction or Playwright proof is still missing
 - continue until all tasks in the active SSOT are delivered, verified, and moved to terminal states
