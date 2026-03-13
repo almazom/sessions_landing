@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:40:20Z",
+    "last_updated": "2026-03-13T11:47:30Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -2750,7 +2750,7 @@
       "title": "Определить operational store schema",
       "description": "Сделать схему хранилища для runtime identity, status snapshot и supervisor ownership.",
       "context": "Store нужен до crash recovery и cleanup.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Дать interactive runtime явное место для operational state.",
       "estimation": {
         "hours": 3,
@@ -2808,16 +2808,23 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_store.py",
+          "contracts/examples/interactive-operational-store.sample.json",
+          "contracts/interactive-operational-store.schema.json",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/operational_store_schema.py",
+          "tests/interactive/test_task_021.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2827,6 +2834,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:44:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after handoff-status primitives were delivered and the store schema became the next blocker."
+        },
+        {
+          "timestamp": "2026-03-13T11:46:30Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Operational store schema, sample payload, and green/red task checks passed with runtime status validation wired in."
+        },
+        {
+          "timestamp": "2026-03-13T11:46:50Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Store builder and test payloads were simplified to remove repeated supervisor literals."
+        },
+        {
+          "timestamp": "2026-03-13T11:47:10Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task-021 commit content was prepared after pytest and py_compile checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:47:30Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red operational store schema commands passed with CSM 100."
         }
       ],
       "lane": "operational-store",

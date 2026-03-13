@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "updated_at": "2026-03-13T11:44:00Z",
+  "records": [
+    {
+      "route": {
+        "harness": "codex",
+        "route_id": "rollout-interactive-fixture.jsonl"
+      },
+      "runtime_identity": {
+        "thread_id": "thread-fixture-codex-001",
+        "session_id": "sess-fixture-codex-001",
+        "transport": "codex_exec_json",
+        "source": "fixture"
+      },
+      "runtime_status": {
+        "version": 1,
+        "thread_id": "thread-fixture-codex-001",
+        "session_id": "sess-fixture-codex-001",
+        "status": "active",
+        "label": "Active",
+        "detail": "The runtime is actively processing or streaming work for this thread.",
+        "source": "live_notification",
+        "transport_state": "connected",
+        "can_send_input": false,
+        "can_resume_stream": false,
+        "raw_status": {
+          "type": "active",
+          "active_flags": []
+        },
+        "wait_reason": null,
+        "reconnect_hint": null,
+        "observed_at": "2026-03-13T11:44:00Z"
+      },
+      "supervisor": {
+        "owner_id": "interactive-supervisor-001",
+        "lease_id": "lease-fixture-001",
+        "lock_status": "claimed",
+        "heartbeat_at": "2026-03-13T11:44:00Z",
+        "lock_expires_at": "2026-03-13T11:49:00Z"
+      }
+    }
+  ]
+}

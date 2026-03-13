@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "interactive-operational-store.schema.json",
+  "title": "InteractiveOperationalStore",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "version",
+    "updated_at",
+    "records"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/operationalRecord"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "routeRef": {
+      "type": "object",
+      "required": [
+        "harness",
+        "route_id"
+      ],
+      "properties": {
+        "harness": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeIdentity": {
+      "type": "object",
+      "required": [
+        "thread_id",
+        "session_id",
+        "transport",
+        "source"
+      ],
+      "properties": {
+        "thread_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "transport": {
+          "type": "string",
+          "enum": [
+            "codex_app_server",
+            "codex_exec_json",
+            "codex_sdk_ts"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "fixture",
+            "operational_live",
+            "recovered"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "supervisorOwnership": {
+      "type": "object",
+      "required": [
+        "owner_id",
+        "lease_id",
+        "lock_status",
+        "heartbeat_at",
+        "lock_expires_at"
+      ],
+      "properties": {
+        "owner_id": {
+          "type": "string"
+        },
+        "lease_id": {
+          "type": "string"
+        },
+        "lock_status": {
+          "type": "string",
+          "enum": [
+            "claimed",
+            "released",
+            "expired"
+          ]
+        },
+        "heartbeat_at": {
+          "type": "string"
+        },
+        "lock_expires_at": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operationalRecord": {
+      "type": "object",
+      "required": [
+        "route",
+        "runtime_identity",
+        "runtime_status",
+        "supervisor"
+      ],
+      "properties": {
+        "route": {
+          "$ref": "#/definitions/routeRef"
+        },
+        "runtime_identity": {
+          "$ref": "#/definitions/runtimeIdentity"
+        },
+        "runtime_status": {
+          "$ref": "interactive-runtime-status.schema.json"
+        },
+        "supervisor": {
+          "$ref": "#/definitions/supervisorOwnership"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
