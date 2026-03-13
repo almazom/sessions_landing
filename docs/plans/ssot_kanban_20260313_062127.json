@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T10:09:00Z",
+    "last_updated": "2026-03-13T10:16:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -1350,7 +1350,7 @@
       "title": "Сделать identity resolver happy path",
       "description": "Реализовать детерминированное разрешение runtime identity из artifact route.",
       "context": "Нужен рабочий happy path до проработки ошибок.",
-      "status": "in_progress",
+      "status": "auto_commit_step",
       "meta_intent": "Позволить interactive URL находить настоящий continuation target.",
       "estimation": {
         "hours": 4,
@@ -1407,7 +1407,7 @@
       },
       "execution_state": {
         "tdd_passed": false,
-        "simplified": false,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
@@ -1431,6 +1431,18 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Started the happy-path identity resolver task immediately after the identity schema was proven."
+        },
+        {
+          "timestamp": "2026-03-13T10:14:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Happy-path identity resolver implementation and task-level green/red checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T10:16:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Identity helper loading path was simplified and the task is ready for atomic commit."
         }
       ],
       "lane": "identity",
