@@ -1,7 +1,9 @@
 """Session API routes."""
 
 import json
+import os
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -26,7 +28,9 @@ logger = get_logger("agent_nexus.sessions")
 REPO_ROOT = Path(__file__).resolve().parents[3]
 NX_COLLECT_PATH = REPO_ROOT / "tools" / "nx-collect" / "nx-collect"
 NX_COLLECT_TIMEOUT_SECONDS = 40
-SESSION_QUERY_CLI_PATH = REPO_ROOT / "tools" / "nx-session-query" / "nx-session-query"
+SESSION_QUERY_TOOL_DIR = REPO_ROOT / "tools" / "nx-session-query"
+SESSION_QUERY_CLI_PATH = SESSION_QUERY_TOOL_DIR / "nx-session-query"
+SESSION_QUERY_MAIN_PATH = SESSION_QUERY_TOOL_DIR / "main.py"
 SESSION_QUERY_TIMEOUT_SECONDS = 20
 
 router = APIRouter(
@@ -65,6 +69,29 @@ def _ensure_sessions_loaded() -> None:
         session_scanner.ensure_loaded()
 
 
+def _session_query_cli_available() -> bool:
+    return SESSION_QUERY_CLI_PATH.exists() or SESSION_QUERY_MAIN_PATH.exists()
+
+
+def _build_session_query_command(file_path: Path, question: str, harness_provider: str) -> list[str]:
+    base_args = [
+        "--input",
+        str(file_path),
+        "--question",
+        question,
+        "--harness-provider",
+        harness_provider,
+    ]
+
+    if SESSION_QUERY_CLI_PATH.exists() and os.access(SESSION_QUERY_CLI_PATH, os.X_OK):
+        return [str(SESSION_QUERY_CLI_PATH), *base_args]
+
+    if SESSION_QUERY_MAIN_PATH.exists():
+        return [sys.executable, str(SESSION_QUERY_MAIN_PATH), *base_args]
+
+    raise FileNotFoundError("Session query CLI entrypoint is not available.")
+
+
 def _resolve_session_artifact_source(harness: str, artifact_id: str) -> tuple[Dict[str, Any], Path]:
     _ensure_sessions_loaded()
     session, file_path = resolve_session_file_from_store(session_store.get_all(), harness, artifact_id)
@@ -81,7 +108,7 @@ def _resolve_session_artifact_source(harness: str, artifact_id: str) -> tuple[Di
 def _resolve_session_artifact(harness: str, artifact_id: str) -> Dict[str, Any]:
     session, file_path = _resolve_session_artifact_source(harness, artifact_id)
     session_payload = dict(session)
-    session_payload["query_enabled"] = bool(session_payload.get("query_enabled")) or SESSION_QUERY_CLI_PATH.exists()
+    session_payload["query_enabled"] = bool(session_payload.get("query_enabled")) or _session_query_cli_available()
     return build_session_detail_payload(session_payload, file_path)
 
 
@@ -101,26 +128,26 @@ def _run_session_query_cli(
 ) -> Dict[str, Any]:
     request_id = getattr(request.state, "request_id", "")
 
-    if not SESSION_QUERY_CLI_PATH.exists():
+    if not _session_query_cli_available():
         log_event(
             logger,
             "error",
             "sessions.ask.cli_missing",
             request_id=request_id,
             cli_path=str(SESSION_QUERY_CLI_PATH),
+            main_path=str(SESSION_QUERY_MAIN_PATH),
         )
         raise HTTPException(status_code=500, detail="Session query CLI is not available.")
 
     session, file_path = _resolve_session_artifact_source(harness, artifact_id)
-    command = [
-        str(SESSION_QUERY_CLI_PATH),
-        "--input",
-        str(file_path),
-        "--question",
-        question,
-        "--harness-provider",
-        str(session.get("agent_type") or harness),
-    ]
+    try:
+        command = _build_session_query_command(
+            file_path,
+            question,
+            str(session.get("agent_type") or harness),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail="Session query CLI is not available.") from exc
 
     log_event(
         logger,

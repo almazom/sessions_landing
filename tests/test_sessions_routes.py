@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +21,8 @@ class SessionRoutesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             cli_path = Path(tmp_dir) / "nx-session-query"
             cli_path.write_text("#!/bin/sh\n", encoding="utf-8")
+            main_path = Path(tmp_dir) / "main.py"
+            main_path.write_text("print('ok')\n", encoding="utf-8")
             source_path = Path(tmp_dir) / "rollout-demo.jsonl"
             source_path.write_text("{}\n", encoding="utf-8")
 
@@ -39,6 +42,10 @@ class SessionRoutesTests(unittest.TestCase):
                 cli_path,
             ), patch.object(
                 sessions_routes,
+                "SESSION_QUERY_MAIN_PATH",
+                main_path,
+            ), patch.object(
+                sessions_routes,
                 "build_session_detail_payload",
                 side_effect=lambda session_payload, file_path: {
                     "session": session_payload,
@@ -50,10 +57,45 @@ class SessionRoutesTests(unittest.TestCase):
         self.assertTrue(payload["session"]["query_enabled"])
         self.assertEqual(payload["file_path"], str(source_path))
 
+    def test_build_session_query_command_falls_back_to_python_main_when_wrapper_is_not_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cli_path = Path(tmp_dir) / "nx-session-query"
+            cli_path.write_text("#!/bin/sh\n", encoding="utf-8")
+            main_path = Path(tmp_dir) / "main.py"
+            main_path.write_text("print('ok')\n", encoding="utf-8")
+            source_path = Path(tmp_dir) / "rollout-demo.jsonl"
+            source_path.write_text("{}\n", encoding="utf-8")
+
+            with patch.object(
+                sessions_routes,
+                "SESSION_QUERY_CLI_PATH",
+                cli_path,
+            ), patch.object(
+                sessions_routes,
+                "SESSION_QUERY_MAIN_PATH",
+                main_path,
+            ), patch.object(
+                sessions_routes.os,
+                "access",
+                return_value=False,
+            ):
+                command = sessions_routes._build_session_query_command(
+                    source_path,
+                    "Какая была главная цель этой сессии?",
+                    "codex",
+                )
+
+        self.assertEqual(command[0], sys.executable)
+        self.assertEqual(command[1], str(main_path))
+        self.assertEqual(command[command.index("--input") + 1], str(source_path))
+        self.assertEqual(command[command.index("--harness-provider") + 1], "codex")
+
     def test_run_session_query_cli_returns_structured_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             cli_path = Path(tmp_dir) / "nx-session-query"
             cli_path.write_text("#!/bin/sh\n", encoding="utf-8")
+            main_path = Path(tmp_dir) / "main.py"
+            main_path.write_text("print('ok')\n", encoding="utf-8")
             source_path = Path(tmp_dir) / "rollout-demo.jsonl"
             source_path.write_text("{}\n", encoding="utf-8")
             expected_payload = {
@@ -114,6 +156,14 @@ class SessionRoutesTests(unittest.TestCase):
                 "SESSION_QUERY_CLI_PATH",
                 cli_path,
             ), patch.object(
+                sessions_routes,
+                "SESSION_QUERY_MAIN_PATH",
+                main_path,
+            ), patch.object(
+                sessions_routes.os,
+                "access",
+                return_value=True,
+            ), patch.object(
                 sessions_routes.subprocess,
                 "run",
                 return_value=completed,
@@ -137,6 +187,8 @@ class SessionRoutesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             cli_path = Path(tmp_dir) / "nx-session-query"
             cli_path.write_text("#!/bin/sh\n", encoding="utf-8")
+            main_path = Path(tmp_dir) / "main.py"
+            main_path.write_text("print('ok')\n", encoding="utf-8")
             source_path = Path(tmp_dir) / "rollout-demo.jsonl"
             source_path.write_text("{}\n", encoding="utf-8")
 
@@ -161,6 +213,10 @@ class SessionRoutesTests(unittest.TestCase):
                 sessions_routes,
                 "SESSION_QUERY_CLI_PATH",
                 cli_path,
+            ), patch.object(
+                sessions_routes,
+                "SESSION_QUERY_MAIN_PATH",
+                main_path,
             ), patch.object(
                 sessions_routes.subprocess,
                 "run",
