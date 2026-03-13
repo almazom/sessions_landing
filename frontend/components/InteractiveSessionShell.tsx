@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { ApiError, api, type InteractiveBootPayload } from '@/lib/api';
+import { buildInteractiveRouteState } from '@/lib/interactive-state';
 
 interface Props {
   harness: string;
@@ -23,6 +24,7 @@ function renderErrorDetail(error: unknown): string {
 export default function InteractiveSessionShell({ harness, artifactId }: Props) {
   const [payload, setPayload] = useState<InteractiveBootPayload | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [composerValue, setComposerValue] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +86,8 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
     );
   }
 
+  const routeState = buildInteractiveRouteState(payload);
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_38%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] px-6 py-10 text-slate-100">
       <div className="mx-auto max-w-5xl space-y-6">
@@ -133,6 +137,23 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
                 No tail snapshot yet. Replay handoff will fill this area in the next card.
               </div>
             ) : null}
+
+            <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/50 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm uppercase tracking-[0.24em] text-sky-300">Live timeline</h3>
+                <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
+                  {routeState.statusLabel}
+                </span>
+              </div>
+              <ol className="mt-4 space-y-3">
+                {routeState.timelineEntries.map((entry) => (
+                  <li key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                    <p className="text-sm font-medium text-white">{entry.summary}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{entry.detail}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </article>
 
           <aside className="space-y-6">
@@ -146,10 +167,30 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
 
             <article className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-slate-950/40">
               <h2 className="text-lg font-semibold text-white">Composer state</h2>
-              <p className="mt-3 text-sm leading-7 text-slate-300">
-                Composer controls stay intentionally inactive until the live timeline and state machine cards are
-                delivered.
-              </p>
+              <form
+                className="mt-3 space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                }}
+              >
+                <textarea
+                  value={composerValue}
+                  onChange={(event) => setComposerValue(event.target.value)}
+                  placeholder={routeState.composer.placeholder}
+                  disabled={!routeState.composer.enabled}
+                  className="min-h-36 w-full rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
+                />
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm leading-6 text-slate-400">{routeState.composer.helperText}</p>
+                  <button
+                    type="submit"
+                    disabled={!routeState.composer.enabled || composerValue.trim().length === 0}
+                    className="inline-flex rounded-full bg-sky-400 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                  >
+                    {routeState.composer.submitLabel}
+                  </button>
+                </div>
+              </form>
             </article>
           </aside>
         </section>
