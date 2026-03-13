@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Dict
 
 
@@ -96,3 +98,33 @@ def build_operational_store_snapshot(
             }
         ],
     }
+
+
+def save_operational_store_snapshot(
+    output_path: str | Path,
+    snapshot: Dict[str, Any],
+) -> Path:
+    resolved_path = Path(output_path).expanduser().resolve()
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    resolved_path.write_text(
+        json.dumps(snapshot, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return resolved_path
+
+
+def load_operational_store_snapshot(
+    snapshot_path: str | Path,
+) -> Dict[str, Any]:
+    resolved_path = Path(snapshot_path).expanduser().resolve()
+    try:
+        payload = json.loads(resolved_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"operational store snapshot is corrupted: {resolved_path}"
+        ) from error
+
+    if not isinstance(payload, dict):
+        raise ValueError(f"operational store snapshot must be an object: {resolved_path}")
+
+    return payload
