@@ -28,6 +28,7 @@ from ..deps import (
     NEXUS_PASSWORD,
 )
 from ..logging_utils import get_logger, log_event
+from ..request_origin import build_request_origin, request_is_https
 from ..settings import settings
 
 
@@ -62,21 +63,6 @@ def _telegram_identity_fields(claims: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _request_is_https(request: Request) -> bool:
-    """Detect HTTPS correctly when running behind a reverse proxy."""
-    forwarded_proto = request.headers.get("x-forwarded-proto", "")
-    if forwarded_proto:
-        return forwarded_proto.split(",")[0].strip() == "https"
-    return request.url.scheme == "https"
-
-
-def _request_origin(request: Request) -> str:
-    """Build the public request origin respecting reverse-proxy headers."""
-    scheme = "https" if _request_is_https(request) else "http"
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
-    return f"{scheme}://{host}"
-
-
 def _normalize_phone_number(value: str) -> str:
     return "".join(ch for ch in value if ch.isdigit())
 
@@ -84,7 +70,7 @@ def _normalize_phone_number(value: str) -> str:
 def _cookie_options(request: Request) -> dict:
     return {
         "httponly": True,
-        "secure": _request_is_https(request),
+        "secure": request_is_https(request),
         "samesite": "lax",
     }
 
@@ -95,18 +81,18 @@ def _clear_telegram_oauth_cookies(response: Response, request: Request) -> None:
 
 
 def _telegram_login_target(request: Request, error: Optional[str] = None) -> str:
-    target = f"{_request_origin(request)}/"
+    target = f"{build_request_origin(request)}/"
     if error:
         target = f"{target}?{urlencode({'auth_error': error})}"
     return target
 
 
 def _telegram_callback_url(request: Request) -> str:
-    return f"{_request_origin(request)}/api/auth/telegram/callback"
+    return f"{build_request_origin(request)}/api/auth/telegram/callback"
 
 
 def _telegram_widget_callback_url(request: Request) -> str:
-    return f"{_request_origin(request)}/api/auth/telegram/widget/callback"
+    return f"{build_request_origin(request)}/api/auth/telegram/widget/callback"
 
 
 def _telegram_requests_phone() -> bool:

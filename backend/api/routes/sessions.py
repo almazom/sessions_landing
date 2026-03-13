@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -20,6 +20,10 @@ from backend.api.interactive_boot import (
 from backend.api.interactive_ownership import (
     enforce_interactive_session_ownership,
     resolve_interactive_actor_id,
+)
+from backend.api.interactive_request_security import (
+    apply_interactive_security_headers,
+    enforce_interactive_request_security,
 )
 from backend.api.scanner import session_store, session_scanner
 from backend.api.session_artifacts import (
@@ -497,9 +501,15 @@ async def get_session_artifact_interactive_boot(
     harness: str,
     artifact_id: str,
     request: Request,
+    response: Response,
     user: User = Depends(get_current_user),
 ):
     """Return the initial backend boot payload for the dedicated interactive route."""
+    try:
+        enforce_interactive_request_security(request)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     actor_id = resolve_interactive_actor_id(user)
     payload = await run_in_threadpool(
         _resolve_interactive_artifact_boot,
@@ -507,6 +517,7 @@ async def get_session_artifact_interactive_boot(
         artifact_id,
         actor_id=actor_id,
     )
+    apply_interactive_security_headers(response)
     log_event(
         logger,
         "info",
