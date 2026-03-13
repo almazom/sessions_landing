@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T09:17:00Z",
+    "last_updated": "2026-03-13T09:23:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -814,7 +814,7 @@
       "title": "Собрать Codex transport and SDK matrix",
       "description": "Сравнить `codex app-server`, `codex exec --experimental-json` и TypeScript `@openai/codex-sdk` по реально доступным сигналам, ограничениям и fit для browser continuation.",
       "context": "SDK уже исследован: это Node wrapper над JSONL exec-потоком. Нужен фактический matrix, где app-server, raw exec и SDK sidecar разведены по ролям, а не смешаны в один transport.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Снять неопределенность и не строить v1 на догадках.",
       "estimation": {
         "hours": 3,
@@ -871,16 +871,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
+        "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_006.py",
+          "tests/interactive/transport_matrix.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -908,6 +912,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "Evidence checks were tightened and the task is ready for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T09:20:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as 4e12b6b and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T09:22:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red reproduce commands passed with CSM 100."
         }
       ],
       "lane": "transport",
@@ -923,7 +939,7 @@
       "title": "Сделать transport probe",
       "description": "Реализовать probe, который на fixture-backed session проверяет support app-server path, raw exec path и SDK sidecar path там, где это уместно.",
       "context": "ADR без реального probe останется только мнением. SDK path должен получить отдельный verdict как backend adapter, а не быть неявно спрятан внутри exec.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Получить машинно-проверяемый verdict по transport support.",
       "estimation": {
         "hours": 4,
@@ -1000,6 +1016,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T09:23:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the transport probe task immediately after the transport matrix was proven."
         }
       ],
       "lane": "transport",
