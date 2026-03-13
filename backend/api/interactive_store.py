@@ -64,7 +64,9 @@ def build_operational_store_snapshot(
         label="supervisor lock status",
     )
     if lock_status not in SUPERVISOR_LOCK_STATUS_VALUES:
-        raise ValueError("operational store does not support this supervisor lock status")
+        raise ValueError(
+            "operational store does not support this supervisor lock status"
+        )
 
     supervisor_payload = {
         "owner_id": _require_non_empty_text(
@@ -125,6 +127,40 @@ def load_operational_store_snapshot(
         ) from error
 
     if not isinstance(payload, dict):
-        raise ValueError(f"operational store snapshot must be an object: {resolved_path}")
+        raise ValueError(
+            f"operational store snapshot must be an object: {resolved_path}"
+        )
 
     return payload
+
+
+def prune_operational_store_snapshot(
+    snapshot: Dict[str, Any],
+) -> Dict[str, Any]:
+    records = snapshot.get("records")
+    if not isinstance(records, list) or not records:
+        raise ValueError("operational store GC requires at least one record")
+
+    kept_records = []
+    removed_route_ids = []
+    for record in records:
+        supervisor = record.get("supervisor") or {}
+        lock_status = supervisor.get("lock_status")
+        route = record.get("route") or {}
+        route_id = route.get("route_id")
+        if lock_status in {"expired", "released"}:
+            if isinstance(route_id, str) and route_id:
+                removed_route_ids.append(route_id)
+            continue
+        kept_records.append(record)
+
+    return {
+        "version": snapshot.get("version", 1),
+        "updated_at": snapshot.get("updated_at"),
+        "records": kept_records,
+        "gc_summary": {
+            "removed_route_ids": removed_route_ids,
+            "removed_count": len(removed_route_ids),
+            "kept_count": len(kept_records),
+        },
+    }
