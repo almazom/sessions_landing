@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T07:34:00Z",
+    "last_updated": "2026-03-13T08:30:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -442,7 +442,7 @@
       "title": "Сделать artifact hash helper",
       "description": "Добавить helper для проверки, что source artifact не меняется во время interactive continuation.",
       "context": "Нужен быстрый способ доказать immutability source artifact.",
-      "status": "in_progress",
+      "status": "done",
       "meta_intent": "Дать каждому следующему этапу cheap check на неизменность исходного артефакта.",
       "estimation": {
         "hours": 3,
@@ -498,20 +498,47 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_artifact_hash.py",
+          "tests/interactive/test_task_003.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
       "history": [
+        {
+          "timestamp": "2026-03-13T08:26:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Artifact hash helper and task tests are green; starting simplification."
+        },
+        {
+          "timestamp": "2026-03-13T08:27:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Simplification pass finished; ready for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T08:28:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task commit created; running reproduce checks on committed state."
+        },
+        {
+          "timestamp": "2026-03-13T08:29:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Artifact hash helper reproduce checks passed with CSM 100."
+        },
         {
           "timestamp": "2026-03-13T08:24:00Z",
           "from_status": "backlog",
