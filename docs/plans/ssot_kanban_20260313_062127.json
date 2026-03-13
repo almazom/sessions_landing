@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "1.5.0",
+    "version": "1.5.1",
     "description": "Single Source of Truth - Kanban Board for Closed-Loop Autonomous Development",
     "workflow_states": [
       "backlog",
@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T09:37:00Z",
+    "last_updated": "2026-03-13T09:43:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -62,6 +62,21 @@
         "TASK-053"
       ]
     },
+    "task_delivery_policy": {
+      "required": true,
+      "rule": "После каждого implementation loop карточка обязана пройти reproduce и весь finalize-delivery chain до перевода в done.",
+      "finalize_delivery_is_composite": true,
+      "finalize_delivery_scope": "each_task_delivery",
+      "finalize_delivery_chain": [
+        "update_ssot_state",
+        "$code-simplifier",
+        "$auto-commit",
+        "$reproduce",
+        "record_reproduce_csm",
+        "move_task_to_done",
+        "t2me milestone notification"
+      ]
+    },
     "sdk_positioning": {
       "status": "investigated",
       "summary": "Codex SDK is a server-side Node adapter over `codex exec --experimental-json`, useful for backend orchestration, fixture seeding, and event-contract verification, but not a complete browser transport by itself.",
@@ -93,6 +108,23 @@
       "primary_skill": "$reproduce",
       "fallback_url": "http://simp.ly/publish/rLThw7",
       "fallback_command": "curl -s http://simp.ly/publish/rLThw7"
+    },
+    "finalize_delivery": {
+      "primary_skill": "$finalize-delivery",
+      "skill_status": "composite-chain",
+      "note": "This is not a separate trello state. It is the mandatory per-task delivery chain executed around the existing SSOT states.",
+      "chain_order": [
+        "simplification_step",
+        "auto_commit_step",
+        "reproduce_step",
+        "done"
+      ],
+      "embedded_skills": [
+        "$code-simplifier",
+        "$auto-commit",
+        "$reproduce"
+      ],
+      "required_after_each_task": true
     }
   },
   "session": {
