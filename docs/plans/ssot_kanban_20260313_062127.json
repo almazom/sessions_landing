@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T09:30:00Z",
+    "last_updated": "2026-03-13T09:37:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -939,7 +939,7 @@
       "title": "Сделать transport probe",
       "description": "Реализовать probe, который на fixture-backed session проверяет support app-server path, raw exec path и SDK sidecar path там, где это уместно.",
       "context": "ADR без реального probe останется только мнением. SDK path должен получить отдельный verdict как backend adapter, а не быть неявно спрятан внутри exec.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Получить машинно-проверяемый verdict по transport support.",
       "estimation": {
         "hours": 4,
@@ -997,16 +997,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
+        "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_007.py",
+          "tests/interactive/transport_probe.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -1034,6 +1038,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "Probe logic was simplified and is ready for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T09:34:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as f151a8a and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T09:36:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red reproduce commands passed with CSM 100."
         }
       ],
       "lane": "transport",
@@ -1049,7 +1065,7 @@
       "title": "Зафиксировать transport ADR",
       "description": "Описать primary browser transport, fallback policy, SDK role и non-goals для v1.",
       "context": "После matrix, probe и SDK spike выбор должен быть закреплен явно: что является browser-facing transport, что является backend adapter, а что остается test-only helper.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Убрать двусмысленность для backend и frontend задач.",
       "estimation": {
         "hours": 2,
@@ -1126,6 +1142,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T09:37:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the transport ADR task immediately after the transport probe was proven."
         }
       ],
       "lane": "transport",
