@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T09:06:00Z",
+    "last_updated": "2026-03-13T09:17:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -814,7 +814,7 @@
       "title": "Собрать Codex transport and SDK matrix",
       "description": "Сравнить `codex app-server`, `codex exec --experimental-json` и TypeScript `@openai/codex-sdk` по реально доступным сигналам, ограничениям и fit для browser continuation.",
       "context": "SDK уже исследован: это Node wrapper над JSONL exec-потоком. Нужен фактический matrix, где app-server, raw exec и SDK sidecar разведены по ролям, а не смешаны в один transport.",
-      "status": "in_progress",
+      "status": "auto_commit_step",
       "meta_intent": "Снять неопределенность и не строить v1 на догадках.",
       "estimation": {
         "hours": 3,
@@ -872,7 +872,7 @@
       },
       "execution_state": {
         "tdd_passed": false,
-        "simplified": false,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
@@ -896,6 +896,18 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Started the transport and SDK matrix task immediately after TASK-005 completion."
+        },
+        {
+          "timestamp": "2026-03-13T09:14:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Transport matrix implementation and task-level green/red checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T09:17:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Evidence checks were tightened and the task is ready for atomic commit."
         }
       ],
       "lane": "transport",
