@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T12:08:10Z",
+    "last_updated": "2026-03-13T12:14:20Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -3253,7 +3253,7 @@
       "title": "Реализовать supervisor start resume flow",
       "description": "Собрать основной lifecycle для start/resume/reconnect под supervisor.",
       "context": "Нужен центральный orchestrator вместо размазанной логики.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Дать backend контролируемый вход в live interactive mode.",
       "estimation": {
         "hours": 4,
@@ -3310,16 +3310,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_supervisor.py",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_025.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -3329,6 +3333,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T12:11:10Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after ownership locks landed and the supervisor orchestration path became the next blocker."
+        },
+        {
+          "timestamp": "2026-03-13T12:13:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Supervisor start/resume orchestration and green/red task checks passed on top of handoff and lock rules."
+        },
+        {
+          "timestamp": "2026-03-13T12:13:20Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Supervisor fixture setup and operation selection logic were simplified without changing behavior."
+        },
+        {
+          "timestamp": "2026-03-13T12:13:45Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task-025 commit content was prepared after pytest and py_compile checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T12:14:20Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red supervisor start/resume commands passed with CSM 100."
         }
       ],
       "lane": "supervisor",
