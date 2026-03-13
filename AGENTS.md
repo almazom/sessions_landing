@@ -47,6 +47,7 @@ Aura layout:
 Documentation role split:
 
 - `PROFILE.md` answers why the project exists
+- `docs/product/HIGH_LEVEL_EXPECTATIONS.md` defines what good product outcomes and UX behavior should look like
 - `AURA.md` defines the project method and style through the active `.aura/latest` version
 - `PROTOCOL.json` defines topology and contracts
 - `.MEMORY` keeps short operational context
@@ -61,6 +62,13 @@ It is especially useful when:
 - you need to decide what information belongs in the private core product
 - you need to understand the user, the main problem, or the reason this system exists
 - you are making prioritization decisions and need the highest-level goal
+
+Read `docs/product/HIGH_LEVEL_EXPECTATIONS.md` when:
+
+- you need the target product shape, not only the project reason
+- you are deciding what belongs on the dashboard versus a session detail page
+- you need UX or information-architecture expectations
+- you need to judge whether a feature improves narrative clarity or operational evidence
 
 Read `AURA.md` when you need the bigger architectural and methodological context.
 
@@ -80,6 +88,7 @@ Read `.aura/latest/AURA.md` directly when:
 Short rule:
 
 - `PROFILE.md` explains why
+- `docs/product/HIGH_LEVEL_EXPECTATIONS.md` explains what good looks like
 - `AURA.md` explains how
 - `PROTOCOL.json` explains what exists
 - `.MEMORY` explains short reusable operational context
@@ -256,6 +265,18 @@ Before closing work on a new isolated CLI:
 2. Run the wrapper script on a real local input file
 3. Verify fallback behavior with short timeouts if providers are involved
 4. Verify the JSON shape matches the declared output contract
+
+## Implementation Session Finish Rule
+
+After each implementation session:
+
+- always run the `code-simplifier` skill before the `auto-commit` skill
+- use the `code-simplifier` skill first on the code and docs touched in the session
+- use the `auto-commit` skill before closing the session
+- run `auto-commit` only after simplification and the relevant verification for the session work are complete
+- commit the session-relevant changes when they are in a shippable state
+- keep commits atomic
+- if the worktree already contains unrelated dirty changes, isolate the session changes instead of sweeping everything into one commit
 
 ## Published Deploy Rule
 

@@ -1,5 +1,20 @@
 # Profile
 
+## Context Handoff
+
+Use this file as the `why` layer.
+
+After this file, read:
+
+- `docs/product/HIGH_LEVEL_EXPECTATIONS.md` -> what a good product result should look like
+- `AURA.md` -> how the system should be built
+
+Rule:
+
+- do not treat `PROFILE.md` as the full product spec
+- use it to anchor purpose and priority
+- use `docs/product/HIGH_LEVEL_EXPECTATIONS.md` to fill product-shape context for UI, UX, and detail-page decisions
+
 ## Why This Project Exists
 
 This project exists to reduce the chaos of working across many AI session providers, agents, and model subscriptions.

@@ -1,7 +1,7 @@
-# AURA SYSTEM PROTOCOL v0.1 — Agent Nexus
+# AURA SYSTEM PROTOCOL v0.2 — Agent Nexus
 
-> **Version:** 0.1
-> **Date:** 2026-03-10
+> **Version:** 0.2
+> **Date:** 2026-03-12
 > **Project:** Agent Nexus
 > **Status:** Active
 
@@ -17,8 +17,10 @@ This project uses a versioned `.aura/` structure inspired by the CineTaste v5 pa
 
 ```text
 .aura/
-├── latest -> v0.1
+├── latest -> v0.2
 ├── v0.1/
+│   └── AURA.md
+├── v0.2/
 │   └── AURA.md
 ├── templates/
 │   ├── KANBAN.template.json
@@ -133,8 +135,27 @@ Every new CLI should be:
 - easy to replace without breaking contracts
 - easy to inspect through its manifest and schema
 
-## 9. VERSION HISTORY
+## 9. IMPLEMENTATION SESSION FINISH STYLE
+
+Preferred repo style after each implementation session:
+
+- run the `code-simplifier` skill over the code and docs touched in that session
+- keep the simplification pass behavior-preserving
+- after simplification and verification, run the `auto-commit` workflow for the changes from that session
+- do not leave implementation-session changes uncommitted when they are in a shippable state
+- keep commits atomic
+- do not sweep unrelated dirty worktree changes into the session commit
+
+Interpretation:
+
+- simplification comes before commit
+- verification comes before commit
+- auto-commit should package the session work cleanly
+- if the worktree already contains unrelated edits, isolate the session-relevant changes instead of committing everything together
+
+## 10. VERSION HISTORY
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.2 | 2026-03-12 | Added post-implementation simplification and auto-commit style rules |
 | v0.1 | 2026-03-10 | Introduced versioned Aura layout, templates, and stable symlink entrypoint |

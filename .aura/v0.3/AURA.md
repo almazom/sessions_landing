@@ -1,7 +1,7 @@
-# AURA SYSTEM PROTOCOL v0.1 — Agent Nexus
+# AURA SYSTEM PROTOCOL v0.3 — Agent Nexus
 
-> **Version:** 0.1
-> **Date:** 2026-03-10
+> **Version:** 0.3
+> **Date:** 2026-03-12
 > **Project:** Agent Nexus
 > **Status:** Active
 
@@ -17,8 +17,12 @@ This project uses a versioned `.aura/` structure inspired by the CineTaste v5 pa
 
 ```text
 .aura/
-├── latest -> v0.1
+├── latest -> v0.3
 ├── v0.1/
+│   └── AURA.md
+├── v0.2/
+│   └── AURA.md
+├── v0.3/
 │   └── AURA.md
 ├── templates/
 │   ├── KANBAN.template.json
@@ -133,8 +137,75 @@ Every new CLI should be:
 - easy to replace without breaking contracts
 - easy to inspect through its manifest and schema
 
-## 9. VERSION HISTORY
+## 9. IMPLEMENTATION SESSION FINISH STYLE
+
+Preferred repo style after each implementation session:
+
+- run the `code-simplifier` skill over the code and docs touched in that session
+- keep the simplification pass behavior-preserving
+- after simplification and verification, run the `auto-commit` workflow for the changes from that session
+- do not leave implementation-session changes uncommitted when they are in a shippable state
+- keep commits atomic
+- do not sweep unrelated dirty worktree changes into the session commit
+
+Interpretation:
+
+- simplification comes before commit
+- verification comes before commit
+- auto-commit should package the session work cleanly
+- if the worktree already contains unrelated edits, isolate the session-relevant changes instead of committing everything together
+
+## 10. AUTONOMOUS FEEDBACK-DRIVEN FULL-CIRCLE ITERATION
+
+Preferred working style for substantial implementation tasks:
+
+- first recover expectation from the strongest available sources
+- recover user intent from the current user request and nearby task context
+- derive SDD-like requirements by filling the gaps between expectation, user intent, and the current implementation
+- think in terms of a full end-to-end iteration loop, not a one-shot patch
+
+Expectation recovery order:
+
+1. user request
+2. `PROFILE.md`
+3. `docs/product/HIGH_LEVEL_EXPECTATIONS.md`
+4. relevant roadmap docs
+5. current code and tests
+
+Autonomous loop:
+
+1. state the likely human workflow for the task as a short step list
+2. treat that list as the operational script a human would run in another terminal
+3. execute the steps through terminal and built-in tools one by one where safe
+4. collect feedback from build output, tests, linters, API responses, browser checks, screenshots, and runtime logs
+5. compare that feedback against user intent and expected product behavior
+6. identify the remaining gaps
+7. iterate again without waiting for the user when the next step is clear and safe
+
+Measurement rule:
+
+- use collected feedback as the measurement layer between expected result, intended result, and actual result
+- keep iterating until the result is roughly `95%+` aligned with user intent and product expectation, or until a real blocker is reached
+- if the loop cannot safely continue, surface the blocker clearly instead of pretending the task is done
+
+Communication rule:
+
+- keep the user informed on major steps only
+- prefer concise milestone updates over constant narration
+- when remote notification is useful, `t2me` is available as a global CLI for Telegram delivery
+- use `t2me` for major-step notifications, screenshots, or proof artifacts when that improves the workflow
+
+Safety boundary:
+
+- this loop is for safe, evidence-driven iteration, not blind autonomy
+- do not invent missing requirements when stronger repo or user context exists
+- do not run destructive or high-risk actions just to satisfy the loop
+- if credentials, approvals, external side effects, or ambiguous product choices block safe continuation, stop and surface the decision point
+
+## 11. VERSION HISTORY
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.3 | 2026-03-12 | Added autonomous feedback-driven full-circle iteration guidance and `t2me` notification preference |
+| v0.2 | 2026-03-12 | Added post-implementation simplification and auto-commit style rules |
 | v0.1 | 2026-03-10 | Introduced versioned Aura layout, templates, and stable symlink entrypoint |

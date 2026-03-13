@@ -83,6 +83,14 @@ frontend через `frontend/lib/runtime-config.ts`.
 ./scripts/install_published_watchdog.sh
 ```
 
+## 📚 Документация
+
+- [docs/README.md](docs/README.md) -> карта документации
+- [docs/product/HIGH_LEVEL_EXPECTATIONS.md](docs/product/HIGH_LEVEL_EXPECTATIONS.md) -> верхнеуровневые продуктовые ожидания
+- [PROFILE.md](PROFILE.md) -> зачем существует проект
+- [AURA.md](AURA.md) -> как проект должен строиться
+- [PROTOCOL.json](PROTOCOL.json) -> какие контракты и инструменты уже существуют
+
 ## Debug Logging
 
 Backend now emits structured JSON logs to stdout for:
