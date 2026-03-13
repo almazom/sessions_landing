@@ -257,6 +257,61 @@ Read a relevant `.MEMORY` card when:
 - the task depends on provider-specific operational rules
 - the task needs a short reusable workflow rather than contract truth
 
+## SSOT Kanban Execution
+
+When a working SSOT Kanban JSON exists in `docs/plans/ssot_kanban_*.json`, treat it as the live execution board for the repository.
+
+Core rule:
+
+- the JSON plan is the implementation source of truth
+- change task state in the JSON as work advances
+- do not leave task progress only in chat messages
+- append a `history` entry every time a task changes status
+- keep `execution_state` honest while the task is moving
+
+Default per-task flow:
+
+1. Move the next eligible task to `in_progress`
+2. Implement the task
+3. Run the task-level terminal checks
+4. Move the task to `simplification_step`
+5. Run the `code-simplifier` skill
+6. Move the task to `auto_commit_step`
+7. Run the `auto-commit` skill
+8. Move the task to `reproduce_step`
+9. Run the task's reproduce commands and required browser checks
+10. Move the task to `done` only when the real confidence is `>= 95`
+
+Failure handling:
+
+- if reproduction fails, move the task to `failed_reproduction`
+- record the failure in `execution_state.last_failure_note`
+- return the task to `in_progress` and continue fixing
+- if repeated attempts hit the max allowed by the SSOT, move the task to `blocked_needs_human`
+
+Pacing and persistence:
+
+- run the Kanban process continuously task by task
+- do not stop at planning if implementation is possible
+- do not stop at local coding if reproduction or Playwright proof is still missing
+- continue until all tasks in the active SSOT are delivered, verified, and moved to terminal states
+- the target end condition is all relevant tasks `done` with confidence `>= 95`
+- if the user changes scope, update the SSOT first, then continue
+
+Browser, BDD, and published verification:
+
+- major user-facing steps must include terminal reproduction and Playwright verification
+- prefer full human-like BDD checks over shallow smoke-only checks
+- for interactive routes, use full browser E2E when the SSOT requires it
+- for published major steps, follow the published-url flow and do not close work while the live URL is stale or broken
+
+User loop:
+
+- keep the user in the loop with short simplified progress updates
+- on major milestones, use the globally available `t2me` CLI to package or relay milestone output
+- if the exact usage is unclear, inspect `t2me --help` first
+- keep milestone communication compact and operational
+
 ## Verification
 
 Before closing work on a new isolated CLI:

@@ -193,7 +193,7 @@
       "title": "Собрать fixture Codex artifact",
       "description": "Создать deterministic fixture артефакт с реальным session id, короткой историей user/assistant и стабильными путями.",
       "context": "Это минимальная база для всех последующих interactive проверок.",
-      "status": "ready_for_dev",
+      "status": "in_progress",
       "meta_intent": "Дать плану настоящий стартовый артефакт, а не абстрактную ссылку на будущие данные.",
       "estimation": {
         "hours": 4,
@@ -261,6 +261,12 @@
       },
       "artifacts_of_completion": [],
       "history": [
+        {
+          "timestamp": "2026-03-13T07:45:00Z",
+          "from_status": "ready_for_dev",
+          "to_status": "in_progress",
+          "note": "Implementation started using the SSOT card workflow."
+        },
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
