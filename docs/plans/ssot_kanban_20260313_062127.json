@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:15:30Z",
+    "last_updated": "2026-03-13T11:19:05Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -2119,7 +2119,7 @@
       "title": "Собрать replay event snapshot",
       "description": "Нормализовать replay-снимок событий для browser delivery до live attach.",
       "context": "Текстовый tail полезен, но нужен еще event-level replay.",
-      "status": "in_progress",
+      "status": "done",
       "meta_intent": "Подготовить основание для воспроизведения истории в браузере.",
       "estimation": {
         "hours": 4,
@@ -2175,16 +2175,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_replay.py",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_016.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2206,6 +2210,30 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Activated as the next replay implementation card after TASK-015 was delivered."
+        },
+        {
+          "timestamp": "2026-03-13T11:17:30Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Replay event snapshot helper and green/red task checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:18:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Replay event snapshot helper was simplified and prepared for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T11:18:30Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as 8b89899 and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T11:19:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red replay event snapshot commands passed with CSM 100."
         }
       ],
       "lane": "replay",
@@ -2221,7 +2249,7 @@
       "title": "Добавить history complete marker",
       "description": "Явно отметить границу между replay и live потоком.",
       "context": "Без явного marker фронтенд не поймет, где заканчивается архивная часть.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Сделать переход replay -> live наблюдаемым и тестируемым.",
       "estimation": {
         "hours": 3,
@@ -2296,6 +2324,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:19:05Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after replay event snapshot delivery proved the archive side of the handoff."
         }
       ],
       "lane": "replay",
