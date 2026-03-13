@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T06:21:27Z"
+    "last_updated": "2026-03-13T06:38:20Z"
   },
   "workflow_triggers": {
     "simplification_step": {
@@ -42,7 +42,57 @@
     "id": "sess-kimi-like-web-fusion-20260313",
     "goal": "Довести Agent Nexus до Codex-first kimi-web-like interactive page на отдельном URL без ложного QEMU или PTY-переобещания.",
     "meta_intent": "Пользователь должен открывать session detail page, видеть честный хвост и replay сессии, переходить по dedicated GET URL в interactive mode и продолжать Codex session в браузере через стабильный runtime flow с published verification.",
-    "started_at": "2026-03-13T06:21:27Z"
+    "started_at": "2026-03-13T06:21:27Z",
+    "reference_inputs": [
+      {
+        "id": "local-codex-clone",
+        "kind": "repository",
+        "purpose": "Локальный reference для Codex-native transport, app-server protocol и resume semantics.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex"
+      },
+      {
+        "id": "local-codex-app-server-readme",
+        "kind": "document",
+        "purpose": "Краткое описание bootstrap handshake, typed channels и lifecycle app-server client.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/codex-rs/app-server-client/README.md"
+      },
+      {
+        "id": "local-codex-thread-resume-params",
+        "kind": "schema",
+        "purpose": "Reference schema для browser-side resume request shape.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/codex-rs/app-server-protocol/schema/json/v2/ThreadResumeParams.json"
+      },
+      {
+        "id": "local-codex-thread-resume-response",
+        "kind": "schema",
+        "purpose": "Reference schema для initial resume response и bootstrap payload.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/codex-rs/app-server-protocol/schema/json/v2/ThreadResumeResponse.json"
+      },
+      {
+        "id": "local-codex-thread-status-notification",
+        "kind": "schema",
+        "purpose": "Reference schema для live status changes и reconnect model.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/codex-rs/app-server-protocol/schema/json/v2/ThreadStatusChangedNotification.json"
+      },
+      {
+        "id": "local-kimi-clone",
+        "kind": "repository",
+        "purpose": "Локальный reference для replay-then-live web pattern, но не как direct implementation base.",
+        "path": "/tmp/kimi-cli-JnC3Ei"
+      },
+      {
+        "id": "local-kimi-web-reference",
+        "kind": "document",
+        "purpose": "Reference doc для kimi web UX/ops surface и security controls.",
+        "path": "/tmp/kimi-cli-JnC3Ei/docs/en/reference/kimi-web.md"
+      },
+      {
+        "id": "local-kimi-sessions-api",
+        "kind": "code",
+        "purpose": "Reference implementation для history replay, history_complete marker и live session attach.",
+        "path": "/tmp/kimi-cli-JnC3Ei/src/kimi_cli/web/api/sessions.py"
+      }
+    ]
   },
   "tasks": [
     {
