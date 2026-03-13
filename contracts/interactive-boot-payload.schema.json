@@ -1,0 +1,292 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "interactive-boot-payload.schema.json",
+  "title": "InteractiveBootPayload",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "version",
+    "route",
+    "session",
+    "interactive_session",
+    "runtime_identity",
+    "artifact",
+    "tail",
+    "replay"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "route": {
+      "$ref": "#/definitions/route"
+    },
+    "session": {
+      "$ref": "#/definitions/session"
+    },
+    "interactive_session": {
+      "$ref": "#/definitions/interactiveSession"
+    },
+    "runtime_identity": {
+      "$ref": "#/definitions/runtimeIdentity"
+    },
+    "artifact": {
+      "$ref": "#/definitions/artifactSnapshot"
+    },
+    "tail": {
+      "$ref": "#/definitions/tailSnapshot"
+    },
+    "replay": {
+      "$ref": "#/definitions/replaySnapshot"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "route": {
+      "type": "object",
+      "required": [
+        "harness",
+        "route_id",
+        "session_href",
+        "interactive_href"
+      ],
+      "properties": {
+        "harness": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "session_href": {
+          "type": "string"
+        },
+        "interactive_href": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object",
+      "required": [
+        "session_id",
+        "agent_name",
+        "cwd",
+        "status",
+        "resume_supported"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string"
+        },
+        "agent_name": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "resume_supported": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "interactiveSession": {
+      "type": "object",
+      "required": [
+        "available",
+        "label",
+        "detail",
+        "href",
+        "transport"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "href": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "transport": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "codex_app_server",
+            "codex_exec_json",
+            "codex_sdk_ts",
+            null
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeIdentity": {
+      "type": "object",
+      "required": [
+        "thread_id",
+        "session_id",
+        "transport",
+        "source"
+      ],
+      "properties": {
+        "thread_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "transport": {
+          "type": "string",
+          "enum": [
+            "codex_app_server",
+            "codex_exec_json",
+            "codex_sdk_ts"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "fixture",
+            "operational_live",
+            "recovered"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifactSnapshot": {
+      "type": "object",
+      "required": [
+        "path",
+        "artifact_name",
+        "byte_size",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "artifact_name": {
+          "type": "string"
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "tailItem": {
+      "type": "object",
+      "required": [
+        "kind",
+        "text"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "tailSnapshot": {
+      "type": "object",
+      "required": [
+        "items",
+        "summary_hint",
+        "has_more_before"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tailItem"
+          }
+        },
+        "summary_hint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "has_more_before": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "replayItem": {
+      "type": "object",
+      "required": [
+        "event_id",
+        "event_type"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "replaySnapshot": {
+      "type": "object",
+      "required": [
+        "items",
+        "history_complete"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/replayItem"
+          }
+        },
+        "history_complete": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

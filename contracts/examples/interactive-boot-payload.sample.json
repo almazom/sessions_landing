@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "route": {
+    "harness": "codex",
+    "route_id": "rollout-interactive-fixture.jsonl",
+    "session_href": "/sessions/codex/rollout-interactive-fixture.jsonl",
+    "interactive_href": "/sessions/codex/rollout-interactive-fixture.jsonl/interactive"
+  },
+  "session": {
+    "session_id": "sess-fixture-codex-001",
+    "agent_name": "Codex",
+    "cwd": "/home/pets/zoo/agents_sessions_dashboard",
+    "status": "active",
+    "resume_supported": true
+  },
+  "interactive_session": {
+    "available": true,
+    "label": "Interactive mode available",
+    "detail": "Open the dedicated route to continue this Codex session through the backend interactive flow.",
+    "href": "/sessions/codex/rollout-interactive-fixture.jsonl/interactive",
+    "transport": "codex_app_server"
+  },
+  "runtime_identity": {
+    "thread_id": "thread-fixture-codex-001",
+    "session_id": "sess-fixture-codex-001",
+    "transport": "codex_exec_json",
+    "source": "fixture"
+  },
+  "artifact": {
+    "path": "/home/pets/zoo/agents_sessions_dashboard/tests/fixtures/interactive/codex/rollout-interactive-fixture.jsonl",
+    "artifact_name": "rollout-interactive-fixture.jsonl",
+    "byte_size": 1614,
+    "sha256": "321a90865f6b304780dc9d90ba69cb5cb94ff04e6a3d24f2f664e6edd3d548de"
+  },
+  "tail": {
+    "items": [
+      {
+        "kind": "message",
+        "role": "user",
+        "text": "Build deterministic fixture for interactive mode",
+        "timestamp": "2026-03-13T07:45:01.000Z"
+      },
+      {
+        "kind": "message",
+        "role": "assistant",
+        "text": "Fixture-backed continuation is ready to attach through the backend flow.",
+        "timestamp": "2026-03-13T07:45:07.000Z"
+      }
+    ],
+    "summary_hint": "Fixture-backed Codex session with stable runtime identity and artifact hash.",
+    "has_more_before": false
+  },
+  "replay": {
+    "items": [
+      {
+        "event_id": "evt-session-meta-1",
+        "event_type": "session_meta",
+        "payload": {
+          "id": "sess-fixture-codex-001"
+        }
+      }
+    ],
+    "history_complete": false
+  }
+}
