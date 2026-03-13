@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:10:12Z",
+    "last_updated": "2026-03-13T11:15:09Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -4765,7 +4765,7 @@
       "title": "Сделать reconnect busy error UI states",
       "description": "Добавить UI для reconnect, busy session, init failure и degraded states.",
       "context": "Плохие состояния должны быть такими же честными, как happy path.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Сделать страницу устойчивой и понятной при сбоях.",
       "estimation": {
         "hours": 4,
@@ -4824,9 +4824,9 @@
       "execution_state": {
         "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
         "passed_green_steps": 1,
         "total_green_steps": 1,
         "passed_red_steps": 1,
@@ -4839,7 +4839,11 @@
         ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "commit:529f103",
+        "reproduce_map:/tmp/reproduce_task037_YMq7Tk/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task037_YMq7Tk/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
@@ -4864,6 +4868,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "TASK-037 simplification review completed; only unrelated pre-existing TypeScript errors remain outside the task files."
+        },
+        {
+          "timestamp": "2026-03-13T11:10:20Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed TASK-037 as 529f103 and advanced to reproduce validation."
+        },
+        {
+          "timestamp": "2026-03-13T11:12:31Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Independent reproduce validation passed with CSM 100."
         }
       ],
       "lane": "frontend-route",
@@ -4879,7 +4895,7 @@
       "title": "Покрыть interactive route integration tests",
       "description": "Проверить backend/frontend связку interactive route на локальном контуре.",
       "context": "После сборки route нужен связный integration proof.",
-      "status": "backlog",
+      "status": "auto_commit_step",
       "meta_intent": "Подтвердить, что GET route действительно ведет в working continuation flow.",
       "estimation": {
         "hours": 3,
@@ -4938,16 +4954,19 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
+        "tdd_passed": true,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "tests/interactive/interactive_route_integration.py",
+          "tests/interactive/test_task_038.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -4957,6 +4976,24 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:13:02Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after TASK-037 reached done with reproduce evidence."
+        },
+        {
+          "timestamp": "2026-03-13T11:14:36Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "TASK-038 integration tests and route-bundle regression checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:15:09Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "TASK-038 simplification review completed without further code changes."
         }
       ],
       "lane": "frontend-route",
