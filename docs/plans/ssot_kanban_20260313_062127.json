@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T10:53:57Z",
+    "last_updated": "2026-03-13T10:57:24Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -1850,7 +1850,7 @@
       "title": "Сделать boot payload serializer",
       "description": "Собрать serializer, который выдает initial boot payload по fixture-backed session.",
       "context": "Schema без serializer не проверяет жизнеспособность контракта.",
-      "status": "in_progress",
+      "status": "done",
       "meta_intent": "Дать backend реальный путь к boot payload.",
       "estimation": {
         "hours": 4,
@@ -1907,16 +1907,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_boot.py",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_014.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -1932,6 +1936,30 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Started the boot payload serializer task immediately after the schema contract was proven."
+        },
+        {
+          "timestamp": "2026-03-13T10:55:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Boot payload serializer and task-level green/red checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T10:56:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Boot payload serializer helper was simplified and prepared for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T10:56:30Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as f44520f and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T10:57:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red reproduce commands passed with CSM 100."
         }
       ],
       "lane": "boot-payload",
@@ -1947,7 +1975,7 @@
       "title": "Собрать tail snapshot extraction",
       "description": "Достать последние сообщения, summary hints и ключевые identity hints из source artifact.",
       "context": "Interactive страница не должна открываться в пустоту.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Показать пользователю честный хвост прошлой сессии до live continuation.",
       "estimation": {
         "hours": 4,
@@ -2024,6 +2052,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T10:57:24Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the tail snapshot extraction task immediately after the boot serializer was proven."
         }
       ],
       "lane": "replay",
