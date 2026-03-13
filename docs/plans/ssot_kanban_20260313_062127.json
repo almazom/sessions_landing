@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T10:45:13Z",
+    "last_updated": "2026-03-13T11:10:12Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -64,14 +64,15 @@
     },
     "task_delivery_policy": {
       "required": true,
-      "rule": "После каждого implementation loop карточка обязана пройти reproduce и весь finalize-delivery chain до перевода в done.",
+      "rule": "После каждого implementation loop карточка обязана пройти finalize-delivery chain; внутри него reproduce stage должен выполняться через reproduce-skill после auto-commit до перевода в done.",
       "finalize_delivery_is_composite": true,
+      "preferred_orchestrator": "$finalize-delivery",
       "finalize_delivery_scope": "each_task_delivery",
       "finalize_delivery_chain": [
         "update_ssot_state",
         "$code-simplifier",
         "$auto-commit",
-        "$reproduce",
+        "$reproduce-skill",
         "record_reproduce_csm",
         "move_task_to_done",
         "t2me milestone notification"
@@ -105,14 +106,17 @@
       "fallback_command": "curl -s http://simp.ly/publish/hV4mzj"
     },
     "reproduce_step": {
-      "primary_skill": "$reproduce",
+      "primary_skill": "$reproduce-skill",
+      "alternate_skills": [
+        "$reproduce"
+      ],
       "fallback_url": "http://simp.ly/publish/rLThw7",
       "fallback_command": "curl -s http://simp.ly/publish/rLThw7"
     },
     "finalize_delivery": {
       "primary_skill": "$finalize-delivery",
       "skill_status": "composite-chain",
-      "note": "This is not a separate trello state. It is the mandatory per-task delivery chain executed around the existing SSOT states.",
+      "note": "This is not a separate trello state. It is the mandatory per-task delivery chain executed around the existing SSOT states, and its reproduce stage should prefer reproduce-skill.",
       "chain_order": [
         "simplification_step",
         "auto_commit_step",
@@ -122,7 +126,7 @@
       "embedded_skills": [
         "$code-simplifier",
         "$auto-commit",
-        "$reproduce"
+        "$reproduce-skill"
       ],
       "required_after_each_task": true
     }
@@ -4761,7 +4765,7 @@
       "title": "Сделать reconnect busy error UI states",
       "description": "Добавить UI для reconnect, busy session, init failure и degraded states.",
       "context": "Плохие состояния должны быть такими же честными, как happy path.",
-      "status": "backlog",
+      "status": "auto_commit_step",
       "meta_intent": "Сделать страницу устойчивой и понятной при сбоях.",
       "estimation": {
         "hours": 4,
@@ -4818,16 +4822,21 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
+        "tdd_passed": true,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "frontend/components/InteractiveSessionShell.tsx",
+          "frontend/lib/interactive-state.ts",
+          "tests/interactive/interactive_resilience_states.py",
+          "tests/interactive/test_task_037.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -4837,6 +4846,24 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:06:43Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated as the next dependency-ready unfinished task after quorum review."
+        },
+        {
+          "timestamp": "2026-03-13T11:08:43Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "TASK-037 implementation and green/red task checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:10:12Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "TASK-037 simplification review completed; only unrelated pre-existing TypeScript errors remain outside the task files."
         }
       ],
       "lane": "frontend-route",

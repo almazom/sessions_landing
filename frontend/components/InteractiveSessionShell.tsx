@@ -21,6 +21,16 @@ function renderErrorDetail(error: unknown): string {
   return 'Interactive route could not load its initial boot payload.';
 }
 
+function alertToneClasses(tone: 'sky' | 'amber' | 'rose'): string {
+  if (tone === 'sky') {
+    return 'border-sky-500/30 bg-sky-500/10 text-sky-100';
+  }
+  if (tone === 'amber') {
+    return 'border-amber-500/30 bg-amber-500/10 text-amber-100';
+  }
+  return 'border-rose-500/30 bg-rose-500/10 text-rose-100';
+}
+
 export default function InteractiveSessionShell({ harness, artifactId }: Props) {
   const [payload, setPayload] = useState<InteractiveBootPayload | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
@@ -56,7 +66,11 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
       <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
         <div className="mx-auto max-w-4xl rounded-3xl border border-rose-500/30 bg-slate-900/90 p-8 shadow-2xl shadow-slate-950/50">
           <p className="text-sm uppercase tracking-[0.3em] text-rose-300">Interactive Route</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Interactive session unavailable</h1>
+          <h1 className="mt-3 text-3xl font-semibold text-white">Initialization failed</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
+            Interactive bootstrap could not start for this session, so the route is staying explicit about the
+            failure instead of showing a fake live shell.
+          </p>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">{errorDetail}</p>
           <div className="mt-8">
             <Link
@@ -127,6 +141,22 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          {routeState.alerts.length > 0 ? (
+            <section className="lg:col-span-2">
+              <div className="grid gap-4 md:grid-cols-3">
+                {routeState.alerts.map((alert) => (
+                  <article
+                    key={alert.key}
+                    className={`rounded-2xl border p-5 shadow-lg shadow-slate-950/20 ${alertToneClasses(alert.tone)}`}
+                  >
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.24em]">{alert.title}</h2>
+                    <p className="mt-3 text-sm leading-6 text-slate-200">{alert.detail}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <article className="rounded-3xl border border-slate-800 bg-slate-900/90 p-8 shadow-xl shadow-slate-950/40">
             <h2 className="text-xl font-semibold text-white">Tail snapshot</h2>
             <p className="mt-3 text-sm leading-7 text-slate-300">
