@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T07:18:20Z",
+    "last_updated": "2026-03-13T07:34:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -60,6 +60,21 @@
         "TASK-051",
         "TASK-052",
         "TASK-053"
+      ]
+    },
+    "sdk_positioning": {
+      "status": "investigated",
+      "summary": "Codex SDK is a server-side Node adapter over `codex exec --experimental-json`, useful for backend orchestration, fixture seeding, and event-contract verification, but not a complete browser transport by itself.",
+      "preferred_roles": [
+        "node sidecar adapter",
+        "real-session fixture seeding",
+        "event normalization reference",
+        "Playwright E2E helper"
+      ],
+      "non_roles_for_v1": [
+        "direct browser transport",
+        "replacement for app-server lifecycle semantics",
+        "client-side SDK in the browser"
       ]
     }
   },
@@ -133,6 +148,42 @@
         "kind": "code",
         "purpose": "Reference implementation для history replay, history_complete marker и live session attach.",
         "path": "/tmp/kimi-cli-JnC3Ei/src/kimi_cli/web/api/sessions.py"
+      },
+      {
+        "id": "official-codex-sdk-docs",
+        "kind": "document",
+        "purpose": "Официальное описание Codex SDK как server-side способа programmatic control local Codex agents.",
+        "url": "https://developers.openai.com/codex/sdk/"
+      },
+      {
+        "id": "local-codex-sdk-typescript",
+        "kind": "repository",
+        "purpose": "Локальный TypeScript SDK reference для Node adapter, streaming events и resume semantics.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/sdk/typescript"
+      },
+      {
+        "id": "local-codex-sdk-readme",
+        "kind": "document",
+        "purpose": "Quickstart и supported SDK surface: run, runStreamed, resumeThread, outputSchema, env/config.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/sdk/typescript/README.md"
+      },
+      {
+        "id": "local-codex-sdk-thread",
+        "kind": "code",
+        "purpose": "Reference for runStreamed, run, resume semantics and thread id lifecycle.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/sdk/typescript/src/thread.ts"
+      },
+      {
+        "id": "local-codex-sdk-events",
+        "kind": "code",
+        "purpose": "Reference for top-level streamed ThreadEvent types from the SDK.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/sdk/typescript/src/events.ts"
+      },
+      {
+        "id": "local-codex-sdk-items",
+        "kind": "code",
+        "purpose": "Reference for command_execution, file_change, mcp_tool_call, web_search and todo_list item shapes.",
+        "path": "/tmp/openai-codex-0s8Q0d/codex/sdk/typescript/src/items.ts"
       }
     ]
   },
@@ -587,9 +638,9 @@
     },
     {
       "id": "TASK-006",
-      "title": "Собрать Codex transport matrix",
-      "description": "Сравнить `codex exec resume --json` и `codex app-server` по реально доступным сигналам и ограничениям.",
-      "context": "Нужен фактический capability matrix до выбора transport.",
+      "title": "Собрать Codex transport and SDK matrix",
+      "description": "Сравнить `codex app-server`, `codex exec --experimental-json` и TypeScript `@openai/codex-sdk` по реально доступным сигналам, ограничениям и fit для browser continuation.",
+      "context": "SDK уже исследован: это Node wrapper над JSONL exec-потоком. Нужен фактический matrix, где app-server, raw exec и SDK sidecar разведены по ролям, а не смешаны в один transport.",
       "status": "backlog",
       "meta_intent": "Снять неопределенность и не строить v1 на догадках.",
       "estimation": {
@@ -679,8 +730,8 @@
     {
       "id": "TASK-007",
       "title": "Сделать transport probe",
-      "description": "Реализовать probe, который на fixture-backed session проверяет support выбранного transport.",
-      "context": "ADR без реального probe останется только мнением.",
+      "description": "Реализовать probe, который на fixture-backed session проверяет support app-server path, raw exec path и SDK sidecar path там, где это уместно.",
+      "context": "ADR без реального probe останется только мнением. SDK path должен получить отдельный verdict как backend adapter, а не быть неявно спрятан внутри exec.",
       "status": "backlog",
       "meta_intent": "Получить машинно-проверяемый verdict по transport support.",
       "estimation": {
@@ -771,8 +822,8 @@
     {
       "id": "TASK-008",
       "title": "Зафиксировать transport ADR",
-      "description": "Описать primary transport, fallback policy и non-goals для v1.",
-      "context": "После matrix и probe выбор должен быть закреплен явно.",
+      "description": "Описать primary browser transport, fallback policy, SDK role и non-goals для v1.",
+      "context": "После matrix, probe и SDK spike выбор должен быть закреплен явно: что является browser-facing transport, что является backend adapter, а что остается test-only helper.",
       "status": "backlog",
       "meta_intent": "Убрать двусмысленность для backend и frontend задач.",
       "estimation": {
@@ -781,7 +832,8 @@
       },
       "dependencies": [
         "TASK-007",
-        "TASK-046"
+        "TASK-046",
+        "TASK-054"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -2494,8 +2546,8 @@
     {
       "id": "TASK-027",
       "title": "Сделать core event normalization",
-      "description": "Преобразовать runtime события Codex в browser-friendly event model.",
-      "context": "Сырые runtime события нельзя безопасно и стабильно показывать в UI без normalization.",
+      "description": "Преобразовать runtime события Codex в browser-friendly event model с явным маппингом либо из app-server events, либо из SDK `ThreadEvent`/`ThreadItem` типов.",
+      "context": "SDK уже дает типы для `command_execution`, `file_change`, `mcp_tool_call`, `web_search`, `todo_list` и `agent_message`. Эти shapes нужно использовать как reference corpus, если выбирается Node adapter path.",
       "status": "backlog",
       "meta_intent": "Создать единый поток событий для interactive страницы.",
       "estimation": {
@@ -2505,7 +2557,8 @@
       "dependencies": [
         "TASK-019",
         "TASK-025",
-        "TASK-048"
+        "TASK-048",
+        "TASK-054"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -2676,8 +2729,8 @@
     {
       "id": "TASK-029",
       "title": "Покрыть event stream contract tests",
-      "description": "Добавить тесты на порядок, форму и деградацию browser event stream.",
-      "context": "Нужен жесткий contract around normalized event stream.",
+      "description": "Добавить тесты на порядок, форму и деградацию browser event stream, включая parity checks против SDK `ThreadEvent`/`ThreadItem` fixtures.",
+      "context": "Нужен жесткий contract around normalized event stream. SDK event/item types дают полезный reference corpus для regression tests.",
       "status": "backlog",
       "meta_intent": "Сделать поток событий устойчивым к регрессиям.",
       "estimation": {
@@ -4358,7 +4411,8 @@
         "TASK-011",
         "TASK-012",
         "TASK-013",
-        "TASK-014"
+        "TASK-014",
+        "TASK-054"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -4738,8 +4792,8 @@
     {
       "id": "TASK-051",
       "title": "Подготовить real session browser E2E fixture",
-      "description": "Собрать реальную session fixture для browser E2E: стабильный artifact route, resumable runtime identity, seeded tail snapshot и published-safe test setup.",
-      "context": "Полный browser E2E не должен опираться на synthetic fake session. Нужна fixture, максимально близкая к реальной Codex continuation.",
+      "description": "Собрать реальную session fixture для browser E2E: стабильный artifact route, resumable runtime identity, seeded tail snapshot и published-safe test setup, при необходимости с Node helper на Codex SDK.",
+      "context": "Полный browser E2E не должен опираться на synthetic fake session. SDK может помочь честно seeded/resume real session fixture без ручного JSONL scripting, но не должен подменять browser transport.",
       "status": "backlog",
       "meta_intent": "Дать Playwright E2E честный вход через реальную session shape вместо искусственной заглушки.",
       "estimation": {
@@ -4750,7 +4804,8 @@
         "TASK-005",
         "TASK-015",
         "TASK-020",
-        "TASK-050"
+        "TASK-050",
+        "TASK-054"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -5020,6 +5075,99 @@
         "browser-e2e",
         "real-session",
         "published",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-054",
+      "title": "Проверить Codex SDK sidecar adapter",
+      "description": "Сделать Node spike на `@openai/codex-sdk` и проверить, может ли он стать backend adapter для `runStreamed`, `resumeThread`, fixture seeding и event capture, не притворяясь browser transport.",
+      "context": "Repo backend сейчас Python. SDK server-side и Node-only, поэтому нужен отдельный spike: насколько оправдан sidecar, где он помогает, и где app-server все равно сильнее.",
+      "status": "backlog",
+      "meta_intent": "Честно зафиксировать полезную роль SDK в архитектуре вместо vague «может пригодиться».",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-006",
+        "TASK-046"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть verdict по SDK как backend sidecar adapter",
+        "Роль SDK разведена с browser-facing transport и test harness usage"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given Codex SDK docs и local SDK source доступны, When запускается SDK sidecar spike, Then система выдает честный verdict по runStreamed, resumeThread, event capture и fixture seeding fit.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Проверить Codex SDK sidecar adapter",
+                "command": "python3 -m pytest tests/interactive/test_task_054.py -k sdk_sidecar_probe",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given SDK path не подходит для Python backend sidecar или искажает browser semantics, When запускается SDK sidecar spike, Then система возвращает clear rejection verdict без ложного архитектурного оптимизма.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Проверить Codex SDK sidecar adapter",
+                "command": "python3 -m pytest tests/interactive/test_task_054.py -k sdk_sidecar_rejected",
+                "expected_output": "sdk sidecar rejected",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:34:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added explicit Codex SDK sidecar evaluation task after SDK investigation."
+        }
+      ],
+      "lane": "transport",
+      "labels": [
+        "interactive",
+        "codex",
+        "transport",
+        "sdk",
+        "sidecar",
         "size:M"
       ]
     }
