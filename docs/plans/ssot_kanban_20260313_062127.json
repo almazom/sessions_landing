@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:07:50Z",
+    "last_updated": "2026-03-13T11:10:55Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -225,7 +225,7 @@
       "title": "Собрать fixture Codex artifact",
       "description": "Создать deterministic fixture артефакт с реальным session id, короткой историей user/assistant и стабильными путями.",
       "context": "Это минимальная база для всех последующих interactive проверок.",
-      "status": "done",
+      "status": "in_progress",
       "meta_intent": "Дать плану настоящий стартовый артефакт, а не абстрактную ссылку на будущие данные.",
       "estimation": {
         "hours": 4,
@@ -2033,20 +2033,16 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": true,
-        "simplified": true,
-        "committed": true,
-        "reproduce_attempts": 1,
-        "reproduce_csm_score": 100,
-        "passed_green_steps": 1,
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
         "total_green_steps": 1,
-        "passed_red_steps": 1,
+        "passed_red_steps": 0,
         "total_red_steps": 1,
-        "touched_files": [
-          "docs/plans/ssot_kanban_20260313_062127.json",
-          "tests/interactive/sdk_sidecar_probe.py",
-          "tests/interactive/test_task_054.py"
-        ],
+        "touched_files": [],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2068,6 +2064,18 @@
           "from_status": "in_progress",
           "to_status": "backlog",
           "note": "Returned to backlog because TASK-047 remains an unmet dependency; the next ready card is TASK-046."
+        },
+        {
+          "timestamp": "2026-03-13T11:10:00Z",
+          "from_status": "done",
+          "to_status": "backlog",
+          "note": "Rolled back a false done state because no TASK-015 test or implementation artifacts exist in the repo."
+        },
+        {
+          "timestamp": "2026-03-13T11:10:55Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated as the next real implementation card after TASK-047 was proven."
         }
       ],
       "lane": "replay",
@@ -2083,7 +2091,7 @@
       "title": "Собрать replay event snapshot",
       "description": "Нормализовать replay-снимок событий для browser delivery до live attach.",
       "context": "Текстовый tail полезен, но нужен еще event-level replay.",
-      "status": "done",
+      "status": "backlog",
       "meta_intent": "Подготовить основание для воспроизведения истории в браузере.",
       "estimation": {
         "hours": 4,
@@ -2139,20 +2147,16 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": true,
-        "simplified": true,
-        "committed": true,
-        "reproduce_attempts": 1,
-        "reproduce_csm_score": 100,
-        "passed_green_steps": 1,
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
         "total_green_steps": 1,
-        "passed_red_steps": 1,
+        "passed_red_steps": 0,
         "total_red_steps": 1,
-        "touched_files": [
-          "docs/plans/ssot_kanban_20260313_062127.json",
-          "tests/interactive/fixtures_bundle.py",
-          "tests/interactive/test_task_046.py"
-        ],
+        "touched_files": [],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2162,6 +2166,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:10:00Z",
+          "from_status": "done",
+          "to_status": "backlog",
+          "note": "Rolled back a false done state because no TASK-016 test or implementation artifacts exist in the repo."
         }
       ],
       "lane": "replay",
@@ -4962,7 +4972,7 @@
       "title": "Провести transport and boot milestone reproduction",
       "description": "Проверить bundle из transport matrix, probe, ADR, runtime identity и boot payload слоя.",
       "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
-      "status": "in_progress",
+      "status": "done",
       "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
       "estimation": {
         "hours": 4,
@@ -5027,16 +5037,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_047.py",
+          "tests/interactive/transport_boot_bundle.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -5046,6 +5060,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Major-step reproduce gate added to SSOT."
+        },
+        {
+          "timestamp": "2026-03-13T11:04:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after the SDK sidecar probe became the last missing dependency."
+        },
+        {
+          "timestamp": "2026-03-13T11:08:30Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Transport and boot milestone bundle helper and green/red gate checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:09:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Transport and boot milestone reproduction gate was simplified and prepared for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T11:09:35Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as 11c6043 and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T11:10:30Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Transport and boot milestone reproduction passed with CSM 100."
         }
       ],
       "lane": "verification",
