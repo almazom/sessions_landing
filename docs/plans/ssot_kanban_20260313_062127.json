@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T10:16:00Z",
+    "last_updated": "2026-03-13T10:22:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -1350,7 +1350,7 @@
       "title": "Сделать identity resolver happy path",
       "description": "Реализовать детерминированное разрешение runtime identity из artifact route.",
       "context": "Нужен рабочий happy path до проработки ошибок.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Позволить interactive URL находить настоящий continuation target.",
       "estimation": {
         "hours": 4,
@@ -1406,16 +1406,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
+        "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_identity.py",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_010.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -1443,6 +1447,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "Identity helper loading path was simplified and the task is ready for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T10:19:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as bbc74c2 and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T10:21:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red reproduce commands passed with CSM 100."
         }
       ],
       "lane": "identity",
@@ -1458,7 +1474,7 @@
       "title": "Покрыть identity mismatch handling",
       "description": "Добавить обработку missing, stale и mismatched identity случаев.",
       "context": "Без этого `/interactive` будет давать ложное ощущение доступности.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Сделать ошибки маршрутизации честными и объяснимыми.",
       "estimation": {
         "hours": 3,
@@ -1533,6 +1549,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T10:22:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the identity mismatch handling task immediately after the happy-path resolver was proven."
         }
       ],
       "lane": "identity",
