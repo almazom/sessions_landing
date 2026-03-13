@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T13:49:30Z",
+    "last_updated": "2026-03-13T10:35:16Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -4363,7 +4363,7 @@
       "title": "Сделать backend interactive route loader",
       "description": "Поднять dedicated GET route loader для `/interactive` с boot payload и route guards.",
       "context": "Нужен реальный backend endpoint для входа на страницу.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Подготовить браузерный вход в continuation flow.",
       "estimation": {
         "hours": 4,
@@ -4423,25 +4423,62 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "backend/api/routes/sessions.py",
+          "tests/interactive/test_task_034.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "python3 -m pytest tests/interactive/test_task_034.py -k green",
+        "python3 -m pytest tests/interactive/test_task_034.py -k red"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T10:31:20Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the first real backend route for the dedicated interactive URL using the existing boot serializer and session capability guard."
+        },
+        {
+          "timestamp": "2026-03-13T10:33:40Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Kept the loader thin by reusing artifact resolution and returning the existing boot payload instead of inventing a second route contract."
+        },
+        {
+          "timestamp": "2026-03-13T10:34:10Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Green and red route-loader checks stayed focused on available versus disabled interactive continuation states."
+        },
+        {
+          "timestamp": "2026-03-13T10:34:40Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "The backend loader reproduced cleanly through the declared python3 -m pytest commands for both route success and route guard failure."
+        },
+        {
+          "timestamp": "2026-03-13T10:35:16Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Dedicated backend interactive route loader reached CSM 100 and now returns the boot payload for supported Codex sessions."
         }
       ],
       "lane": "frontend-route",
@@ -5734,7 +5771,7 @@
       "title": "Провести replay and store milestone reproduction",
       "description": "Проверить bundle из tail snapshot, replay snapshot, handoff/status и operational store.",
       "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
       "estimation": {
         "hours": 4,
@@ -5798,19 +5835,26 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/replay_store_bundle.py",
+          "tests/interactive/test_task_048.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "python3 -m pytest tests/interactive/test_task_048.py -k replay_store_bundle",
+        "python3 -m pytest tests/interactive/test_task_048.py -k replay_store_bundle_broken"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T07:06:40Z",

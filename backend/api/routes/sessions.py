@@ -13,6 +13,10 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from backend.api.logging_utils import get_logger, log_event
+from backend.api.interactive_boot import (
+    InteractiveBootPayloadUnavailable,
+    build_interactive_boot_payload,
+)
 from backend.api.scanner import session_store, session_scanner
 from backend.api.session_artifacts import (
     attach_session_route,
@@ -110,6 +114,15 @@ def _resolve_session_artifact(harness: str, artifact_id: str) -> Dict[str, Any]:
     session_payload = dict(session)
     session_payload["query_enabled"] = bool(session_payload.get("query_enabled")) or _session_query_cli_available()
     return build_session_detail_payload(session_payload, file_path)
+
+
+def _resolve_interactive_artifact_boot(harness: str, artifact_id: str) -> Dict[str, Any]:
+    session, file_path = _resolve_session_artifact_source(harness, artifact_id)
+
+    try:
+        return build_interactive_boot_payload(dict(session), file_path)
+    except InteractiveBootPayloadUnavailable as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 def _validate_session_query_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -461,6 +474,31 @@ async def get_session_artifact_detail(harness: str, artifact_id: str, request: R
         harness=harness,
         artifact_id=artifact_id,
         session_id=(payload.get("session") or {}).get("session_id"),
+    )
+    return payload
+
+
+@router.get("/session-artifacts/{harness}/{artifact_id}/interactive")
+async def get_session_artifact_interactive_boot(
+    harness: str,
+    artifact_id: str,
+    request: Request,
+):
+    """Return the initial backend boot payload for the dedicated interactive route."""
+    payload = await run_in_threadpool(
+        _resolve_interactive_artifact_boot,
+        harness,
+        artifact_id,
+    )
+    log_event(
+        logger,
+        "info",
+        "sessions.artifact.interactive.completed",
+        request_id=getattr(request.state, "request_id", ""),
+        harness=harness,
+        artifact_id=artifact_id,
+        session_id=(payload.get("session") or {}).get("session_id"),
+        transport=(payload.get("interactive_session") or {}).get("transport"),
     )
     return payload
 
