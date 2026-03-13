@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T10:57:24Z",
+    "last_updated": "2026-03-13T10:58:30Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -1975,7 +1975,7 @@
       "title": "Собрать tail snapshot extraction",
       "description": "Достать последние сообщения, summary hints и ключевые identity hints из source artifact.",
       "context": "Interactive страница не должна открываться в пустоту.",
-      "status": "in_progress",
+      "status": "backlog",
       "meta_intent": "Показать пользователю честный хвост прошлой сессии до live continuation.",
       "estimation": {
         "hours": 4,
@@ -2058,6 +2058,12 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Started the tail snapshot extraction task immediately after the boot serializer was proven."
+        },
+        {
+          "timestamp": "2026-03-13T10:58:30Z",
+          "from_status": "in_progress",
+          "to_status": "backlog",
+          "note": "Returned to backlog because TASK-047 remains an unmet dependency; the next ready card is TASK-046."
         }
       ],
       "lane": "replay",
@@ -2073,7 +2079,7 @@
       "title": "Собрать replay event snapshot",
       "description": "Нормализовать replay-снимок событий для browser delivery до live attach.",
       "context": "Текстовый tail полезен, но нужен еще event-level replay.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Подготовить основание для воспроизведения истории в браузере.",
       "estimation": {
         "hours": 4,
@@ -4902,6 +4908,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Major-step reproduce gate added to SSOT."
+        },
+        {
+          "timestamp": "2026-03-13T10:58:30Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated because it is the next dependency-ready card after TASK-014."
         }
       ],
       "lane": "verification",
