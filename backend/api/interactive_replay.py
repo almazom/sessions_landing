@@ -11,7 +11,11 @@ def _normalize_record(record: Dict[str, Any], event_index: int) -> Dict[str, Any
     record_type = record.get("type")
     payload = record.get("payload") or {}
 
-    if record_type == "response_item" and payload.get("type") == "message" and payload.get("role") == "user":
+    if (
+        record_type == "response_item"
+        and payload.get("type") == "message"
+        and payload.get("role") == "user"
+    ):
         content = payload.get("content") or []
         text = ""
         for item in content:
@@ -72,4 +76,29 @@ def build_replay_event_snapshot(
     return {
         "items": events[:event_limit],
         "history_complete": False,
+    }
+
+
+def add_history_complete_marker(snapshot: Dict[str, Any]) -> Dict[str, Any]:
+    items = snapshot.get("items")
+    if not isinstance(items, list) or not items:
+        raise ValueError(
+            "history complete marker requires at least one replay event"
+        )
+
+    marker_index = len(items) + 1
+    marked_items = list(items)
+    marked_items.append(
+        {
+            "event_id": f"evt-{marker_index:04d}",
+            "event_type": "history_complete",
+            "payload": {
+                "status": "complete",
+            },
+        }
+    )
+
+    return {
+        "items": marked_items,
+        "history_complete": True,
     }
