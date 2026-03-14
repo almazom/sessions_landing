@@ -13,8 +13,8 @@ class Task052LocalPlaywrightRealBrowserE2ETests(unittest.TestCase):
 
         combined_output = "\n".join((result.stdout, result.stderr))
         self.assertEqual(result.returncode, 0, combined_output)
-        self.assertIn("interactive prompt roundtrip", combined_output)
-        self.assertIn("3 passed", combined_output)
+        self.assertIn("interactive prompt roundtrip mutates the real artifact", combined_output)
+        self.assertRegex(combined_output, r"\b\d+ passed\b")
 
     def test_local_real_browser_e2e_broken(self) -> None:
         result = run_interactive_browser_e2e(

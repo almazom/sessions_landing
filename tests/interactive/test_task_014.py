@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from backend.api.interactive_boot import (
-    InteractiveBootPayloadUnavailable,
-    build_interactive_boot_payload,
-)
+from backend.api.interactive_boot import build_interactive_boot_payload
 from tests.interactive.boot_payload_schema import (
     load_boot_payload_schema,
     validate_boot_payload_against_schema,
@@ -36,30 +33,22 @@ class Task014BootPayloadSerializerTests(unittest.TestCase):
         self.assertEqual(payload["route"]["route_id"], "rollout-interactive-fixture.jsonl")
         self.assertEqual(payload["interactive_session"]["transport"], "codex_app_server")
         self.assertEqual(payload["runtime_identity"]["thread_id"], "thread-fixture-codex-001")
-        self.assertEqual(
-            payload["tail"],
-            {
-                "items": [],
-                "summary_hint": None,
-                "has_more_before": False,
-            },
-        )
-        self.assertEqual(
-            payload["replay"],
-            {
-                "items": [],
-                "history_complete": False,
-            },
+        self.assertGreaterEqual(len(payload["tail"]["items"]), 1)
+        self.assertIn("Session status", payload["tail"]["summary_hint"])
+        self.assertGreaterEqual(len(payload["replay"]["items"]), 1)
+        self.assertTrue(payload["replay"]["history_complete"])
+
+    def test_red_returns_blocked_payload_when_interactive_mode_is_disabled(self) -> None:
+        payload = build_interactive_boot_payload(
+            self._session_payload(resume_supported=False, status="idle"),
+            codex_fixture_path(),
         )
 
-    def test_red_fails_honestly_when_interactive_mode_is_disabled(self) -> None:
-        with self.assertRaises(InteractiveBootPayloadUnavailable) as error:
-            build_interactive_boot_payload(
-                self._session_payload(resume_supported=False, status="idle"),
-                codex_fixture_path(),
-            )
-
-        self.assertIn("disabled", str(error.exception))
+        schema = load_boot_payload_schema()
+        self.assertTrue(validate_boot_payload_against_schema(payload, schema))
+        self.assertFalse(payload["interactive_session"]["available"])
+        self.assertEqual(payload["runtime_identity"]["thread_id"], "thread-fixture-codex-001")
+        self.assertIn("disabled", payload["interactive_session"]["detail"])
 
 
 if __name__ == "__main__":

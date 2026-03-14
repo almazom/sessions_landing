@@ -6,21 +6,24 @@ from tests.interactive.browser_e2e_runner import run_interactive_browser_e2e
 from tests.interactive.real_session_browser_fixture import build_real_session_browser_fixture
 
 
-class Task053PublishedPlaywrightRealBrowserE2ETests(unittest.TestCase):
-    def test_published_real_browser_e2e(self) -> None:
+class Task062LocalLiveMotionE2ETests(unittest.TestCase):
+    def test_local_live_motion_e2e(self) -> None:
         fixture = build_real_session_browser_fixture()
-        result = run_interactive_browser_e2e(base_url=fixture.published_base_url)
+        result = run_interactive_browser_e2e(
+            base_url=fixture.local_base_url,
+            grep="interactive prompt roundtrip mutates the real artifact",
+        )
 
         combined_output = "\n".join((result.stdout, result.stderr))
         self.assertEqual(result.returncode, 0, combined_output)
-        self.assertIn("detail CTA opens interactive route", combined_output)
         self.assertIn("interactive prompt roundtrip mutates the real artifact", combined_output)
-        self.assertRegex(combined_output, r"\b\d+ passed\b")
+        self.assertRegex(combined_output, r"\b1 passed\b")
 
-    def test_published_real_browser_e2e_broken(self) -> None:
+    def test_local_live_motion_e2e_broken(self) -> None:
         result = run_interactive_browser_e2e(
-            base_url="http://107.174.231.22:1",
+            base_url="http://127.0.0.1:1",
             ensure_stack=False,
+            grep="interactive prompt roundtrip mutates the real artifact",
         )
 
         combined_output = "\n".join((result.stdout, result.stderr))

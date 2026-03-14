@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "interactive-boot-payload.schema.json",
   "title": "InteractiveBootPayload",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "object",
   "required": [
     "version",
@@ -29,7 +29,14 @@
       "$ref": "#/definitions/interactiveSession"
     },
     "runtime_identity": {
-      "$ref": "#/definitions/runtimeIdentity"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/runtimeIdentity"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "artifact": {
       "$ref": "#/definitions/artifactSnapshot"

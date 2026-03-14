@@ -3,17 +3,30 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict
 
 
 SUPERVISOR_LOCK_STATUS_VALUES = {"claimed", "released", "expired"}
+DEFAULT_OPERATIONAL_STORE_PATH = Path(
+    os.environ.get(
+        "NEXUS_INTERACTIVE_OPERATIONAL_STORE_PATH",
+        "/tmp/agent-nexus-interactive-operational-store.json",
+    )
+)
 
 
 def _require_non_empty_text(value: Any, *, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"operational store requires {label}")
     return value
+
+
+def resolve_operational_store_path(
+    snapshot_path: str | Path | None = None,
+) -> Path:
+    return Path(snapshot_path or DEFAULT_OPERATIONAL_STORE_PATH).expanduser().resolve()
 
 
 def build_operational_store_snapshot(
@@ -106,7 +119,7 @@ def save_operational_store_snapshot(
     output_path: str | Path,
     snapshot: Dict[str, Any],
 ) -> Path:
-    resolved_path = Path(output_path).expanduser().resolve()
+    resolved_path = resolve_operational_store_path(output_path)
     resolved_path.parent.mkdir(parents=True, exist_ok=True)
     resolved_path.write_text(
         json.dumps(snapshot, indent=2) + "\n",
@@ -118,7 +131,7 @@ def save_operational_store_snapshot(
 def load_operational_store_snapshot(
     snapshot_path: str | Path,
 ) -> Dict[str, Any]:
-    resolved_path = Path(snapshot_path).expanduser().resolve()
+    resolved_path = resolve_operational_store_path(snapshot_path)
     try:
         payload = json.loads(resolved_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
@@ -132,6 +145,76 @@ def load_operational_store_snapshot(
         )
 
     return payload
+
+
+def find_operational_store_record(
+    snapshot: Dict[str, Any],
+    *,
+    harness: str,
+    route_id: str,
+) -> Dict[str, Any] | None:
+    records = snapshot.get("records")
+    if not isinstance(records, list):
+        return None
+
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        route = record.get("route")
+        if not isinstance(route, dict):
+            continue
+        if route.get("harness") != harness:
+            continue
+        if route.get("route_id") != route_id:
+            continue
+        return record
+
+    return None
+
+
+def upsert_operational_store_record(
+    output_path: str | Path,
+    *,
+    record: Dict[str, Any],
+    updated_at: str,
+) -> Path:
+    resolved_path = resolve_operational_store_path(output_path)
+    try:
+        snapshot = load_operational_store_snapshot(resolved_path)
+    except FileNotFoundError:
+        snapshot = {
+            "version": 1,
+            "updated_at": updated_at,
+            "records": [],
+        }
+
+    existing_records = snapshot.get("records")
+    if not isinstance(existing_records, list):
+        existing_records = []
+
+    route = record.get("route") or {}
+    harness = route.get("harness")
+    route_id = route.get("route_id")
+    next_records = [
+        existing_record
+        for existing_record in existing_records
+        if (
+            not isinstance(existing_record, dict)
+            or not isinstance(existing_record.get("route"), dict)
+            or existing_record["route"].get("harness") != harness
+            or existing_record["route"].get("route_id") != route_id
+        )
+    ]
+    next_records.append(record)
+
+    return save_operational_store_snapshot(
+        resolved_path,
+        {
+            "version": int(snapshot.get("version", 1) or 1),
+            "updated_at": updated_at,
+            "records": next_records,
+        },
+    )
 
 
 def prune_operational_store_snapshot(

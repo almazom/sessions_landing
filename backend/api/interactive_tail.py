@@ -7,7 +7,12 @@ from typing import Any, Dict, List
 
 from backend.parsers import PARSER_REGISTRY
 
-from .interactive_identity import resolve_runtime_identity_from_artifact_route
+from .interactive_identity import (
+    InteractiveIdentityMismatch,
+    InteractiveIdentityNotFound,
+    InteractiveIdentityStale,
+    resolve_runtime_identity_from_artifact_route,
+)
 from .session_artifacts import build_session_route
 
 
@@ -29,11 +34,19 @@ def build_interactive_tail_snapshot(
     resolved_artifact_path = Path(artifact_path).expanduser().resolve()
     summary = parser_cls().parse_file(resolved_artifact_path)
     route = build_session_route(harness, str(resolved_artifact_path), summary.session_id)
-    runtime_mapping = resolve_runtime_identity_from_artifact_route(
-        harness=harness,
-        artifact_route_id=route["id"],
-        artifact_session_id=summary.session_id,
-    )
+    try:
+        runtime_mapping = resolve_runtime_identity_from_artifact_route(
+            harness=harness,
+            artifact_route_id=route["id"],
+            artifact_session_id=summary.session_id,
+        )
+    except (
+        InteractiveIdentityNotFound,
+        InteractiveIdentityMismatch,
+        InteractiveIdentityStale,
+        LookupError,
+    ):
+        runtime_mapping = None
 
     items: List[Dict[str, Any]] = []
     if summary.last_user_message:
@@ -64,6 +77,11 @@ def build_interactive_tail_snapshot(
             "text": (
                 f"Session {summary.session_id} maps to thread "
                 f"{runtime_mapping['runtime']['thread_id']}."
+                if runtime_mapping is not None
+                else (
+                    f"Session {summary.session_id} has no live runtime mapping yet; "
+                    "interactive continuation stays blocked until resume support is wired."
+                )
             ),
             "timestamp": summary.timestamp_end,
         }

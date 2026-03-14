@@ -12,7 +12,7 @@ REQUIRED_STATE_MARKERS = [
     "Reconnecting to runtime",
     "Session is busy",
     "Degraded snapshot",
-    "runtime_identity.source === 'recovered'",
+    "runtime_identity?.source === 'recovered'",
     "!payload.replay.history_complete",
 ]
 REQUIRED_SHELL_MARKERS = [

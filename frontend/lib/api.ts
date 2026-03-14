@@ -318,10 +318,33 @@ export interface InteractiveBootPayload {
   route: InteractiveBootRoute;
   session: InteractiveBootSession;
   interactive_session: SessionInteractiveCapability;
-  runtime_identity: InteractiveRuntimeIdentity;
+  runtime_identity: InteractiveRuntimeIdentity | null;
   artifact: InteractiveArtifactSnapshot;
   tail: InteractiveTailSnapshot;
   replay: InteractiveReplaySnapshot;
+}
+
+export interface SessionResumeResponse {
+  status: 'started' | 'blocked' | 'failed' | string;
+  session_id: string;
+  cwd: string;
+  pid?: number;
+  log_path?: string;
+  interactive_href?: string | null;
+  started_at?: string;
+}
+
+export interface InteractivePromptSubmitResponse {
+  status: 'completed' | 'failed' | string;
+  session_id: string;
+  cwd: string;
+  submitted_text: string;
+  artifact_updated: boolean;
+  artifact_before: InteractiveArtifactSnapshot;
+  artifact_after: InteractiveArtifactSnapshot;
+  assistant_message: string;
+  boot_payload: InteractiveBootPayload;
+  completed_at?: string;
 }
 
 export interface AuthStatus {
@@ -479,6 +502,33 @@ class ApiClient {
   ): Promise<InteractiveBootPayload> {
     return this.fetch<InteractiveBootPayload>(
       `/api/session-artifacts/${encodeURIComponent(harness)}/${encodeURIComponent(artifactId)}/interactive`,
+    );
+  }
+
+  async resumeSessionArtifact(
+    harness: string,
+    artifactId: string,
+  ): Promise<SessionResumeResponse> {
+    return this.fetch<SessionResumeResponse>(
+      `/api/session-artifacts/${encodeURIComponent(harness)}/${encodeURIComponent(artifactId)}/resume`,
+      {
+        method: 'POST',
+      },
+    );
+  }
+
+  async submitSessionArtifactInteractivePrompt(
+    harness: string,
+    artifactId: string,
+    text: string,
+  ): Promise<InteractivePromptSubmitResponse> {
+    return this.fetch<InteractivePromptSubmitResponse>(
+      `/api/session-artifacts/${encodeURIComponent(harness)}/${encodeURIComponent(artifactId)}/interactive/prompt`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      },
     );
   }
 

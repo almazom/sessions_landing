@@ -43,6 +43,20 @@ class Task027CoreEventNormalizationTests(unittest.TestCase):
                 },
             }
         )
+        turn_started_event = normalize_thread_event(
+            {
+                "type": "turn.started",
+            }
+        )
+        turn_completed_event = normalize_thread_event(
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 10,
+                    "output_tokens": 4,
+                },
+            }
+        )
 
         self.assertEqual(command_event["kind"], "command")
         self.assertEqual(command_event["status"], "completed")
@@ -58,6 +72,12 @@ class Task027CoreEventNormalizationTests(unittest.TestCase):
         self.assertEqual(todo_event["payload"]["completed_count"], 1)
         self.assertEqual(todo_event["payload"]["total_count"], 2)
 
+        self.assertEqual(turn_started_event["kind"], "turn")
+        self.assertEqual(turn_started_event["status"], "started")
+        self.assertEqual(turn_completed_event["kind"], "turn")
+        self.assertEqual(turn_completed_event["status"], "completed")
+        self.assertEqual(turn_completed_event["payload"]["usage"]["output_tokens"], 4)
+
     def test_red_rejects_unknown_thread_item_type(self) -> None:
         with self.assertRaises(ValueError):
             normalize_thread_event(
@@ -69,6 +89,10 @@ class Task027CoreEventNormalizationTests(unittest.TestCase):
                     },
                 }
             )
+
+    def test_red_rejects_non_object_thread_event_payload(self) -> None:
+        with self.assertRaises(ValueError):
+            normalize_thread_event(5)
 
 
 if __name__ == "__main__":

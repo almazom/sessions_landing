@@ -295,6 +295,28 @@ def _apply_repo_fixture_session_overrides(
     }
 
 
+def derive_resume_supported(session: Dict[str, Any]) -> bool:
+    if "resume_supported" in session:
+        return bool(session.get("resume_supported"))
+
+    harness = str(session.get("agent_type") or session.get("provider") or "").strip().lower()
+    session_id = str(session.get("session_id") or "").strip()
+    cwd = str(session.get("cwd") or "").strip()
+
+    if harness != "codex":
+        return False
+
+    if not session_id or not cwd:
+        return False
+
+    return bool(
+        re.fullmatch(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+            session_id,
+        )
+    )
+
+
 def parse_session_file(harness: str, file_path: Path) -> Dict[str, Any]:
     parser_cls = PARSER_REGISTRY.get(harness)
     if not parser_cls:
@@ -941,6 +963,10 @@ def build_session_detail_payload(
     live_within_minutes: int = DEFAULT_LIVE_WITHIN_MINUTES,
     active_within_minutes: int = DEFAULT_ACTIVE_WITHIN_MINUTES,
 ) -> Dict[str, Any]:
+    session = {
+        **session,
+        "resume_supported": derive_resume_supported(session),
+    }
     tzinfo, timezone_label = resolve_timezone(timezone_name)
     file_stats = inspect_session_file(file_path)
     user_messages = session.get("user_messages") or []

@@ -28,7 +28,7 @@ class Task036LiveTimelineComposerStateTests(unittest.TestCase):
                 "buildInteractiveRouteState",
                 "Live timeline",
                 "textarea",
-                "Queue prompt",
+                "Send prompt",
                 "composer.enabled",
             ],
         )

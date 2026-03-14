@@ -13,7 +13,7 @@ REQUIRED_STATE_MARKERS = [
     "buildInteractiveRouteState",
     "Live timeline",
     "textarea",
-    "Queue prompt",
+    "Send prompt",
     "composer.enabled",
 ]
 

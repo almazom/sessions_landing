@@ -35,11 +35,13 @@ class ConnectionManager:
     """Manage WebSocket connections."""
     
     active_connections: List[WebSocket] = field(default_factory=list)
+    interactive_subscriptions: Dict[str, set[str]] = field(default_factory=dict)
     
     async def connect(self, websocket: WebSocket):
         """Accept new connection."""
         await websocket.accept()
         self.active_connections.append(websocket)
+        self.interactive_subscriptions[getattr(websocket.state, "connection_id", "")] = set()
         log_event(
             logger,
             "info",
@@ -59,6 +61,7 @@ class ConnectionManager:
         """Remove connection."""
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+        self.interactive_subscriptions.pop(getattr(websocket.state, "connection_id", ""), None)
         log_event(
             logger,
             "info",
@@ -123,6 +126,62 @@ class ConnectionManager:
             type="metrics_update",
             data=metrics
         ))
+
+    async def subscribe_interactive(self, websocket: WebSocket, *, harness: str, route_id: str):
+        connection_id = getattr(websocket.state, "connection_id", "")
+        if not harness or not route_id:
+            await self.send_personal(websocket, WSMessage(
+                type="error",
+                data={"message": "interactive subscription requires harness and route_id"},
+            ))
+            return
+
+        subscription_key = f"{harness}:{route_id}"
+        self.interactive_subscriptions.setdefault(connection_id, set()).add(subscription_key)
+        await self.send_personal(websocket, WSMessage(
+            type="interactive_subscribed",
+            data={"harness": harness, "route_id": route_id},
+        ))
+
+    async def broadcast_interactive_event(self, *, harness: str, route_id: str, event: Dict[str, Any]):
+        if not self.active_connections:
+            return
+
+        subscription_key = f"{harness}:{route_id}"
+        message = WSMessage(
+            type="interactive_event",
+            data={
+                "harness": harness,
+                "route_id": route_id,
+                "event": event,
+            },
+        )
+        disconnected: list[WebSocket] = []
+
+        for connection in self.active_connections:
+            connection_id = getattr(connection.state, "connection_id", "")
+            subscriptions = self.interactive_subscriptions.get(connection_id, set())
+            if subscription_key not in subscriptions:
+                continue
+            try:
+                await connection.send_text(message.model_dump_json())
+            except Exception:
+                disconnected.append(connection)
+
+        for connection in disconnected:
+            self.disconnect(connection)
+
+        log_event(
+            logger,
+            "info",
+            "websocket.broadcast.interactive.completed",
+            harness=harness,
+            route_id=route_id,
+            recipients=max(0, len(self.active_connections) - len(disconnected)),
+            disconnected=len(disconnected),
+            event_kind=event.get("kind"),
+            event_status=event.get("status"),
+        )
 
 
 # Global connection manager
@@ -216,6 +275,14 @@ async def websocket_endpoint(
                                 type="error",
                                 data={"message": f"Сессия {session_id} не найдена"}
                             ))
+
+                elif msg_type == "subscribe_interactive":
+                    interactive_data = msg.get("data", {}) or {}
+                    await manager.subscribe_interactive(
+                        websocket,
+                        harness=str(interactive_data.get("harness") or ""),
+                        route_id=str(interactive_data.get("route_id") or ""),
+                    )
                 
                 # Неизвестный тип
                 else:
@@ -260,3 +327,12 @@ async def notify_session_update(session_data: dict):
 async def notify_metrics_update(metrics: dict):
     """Call this when metrics change."""
     await manager.broadcast_metrics(metrics)
+
+
+async def notify_interactive_route_event(harness: str, route_id: str, event: dict):
+    """Broadcast one route-specific interactive event to subscribed clients."""
+    await manager.broadcast_interactive_event(
+        harness=harness,
+        route_id=route_id,
+        event=event,
+    )

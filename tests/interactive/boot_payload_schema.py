@@ -105,7 +105,7 @@ def validate_boot_payload_against_schema(
         return False
     if not isinstance(interactive_session, dict):
         return False
-    if not isinstance(runtime_identity, dict):
+    if runtime_identity is not None and not isinstance(runtime_identity, dict):
         return False
     if not isinstance(artifact, dict):
         return False
@@ -134,12 +134,13 @@ def validate_boot_payload_against_schema(
     if interactive_transport is not None and interactive_transport not in schema.capability_transport_values:
         return False
 
-    if not has_string_keys(runtime_identity, RUNTIME_IDENTITY_KEYS):
-        return False
-    if runtime_identity["transport"] not in schema.runtime_transport_values:
-        return False
-    if runtime_identity["source"] not in schema.runtime_source_values:
-        return False
+    if runtime_identity is not None:
+        if not has_string_keys(runtime_identity, RUNTIME_IDENTITY_KEYS):
+            return False
+        if runtime_identity["transport"] not in schema.runtime_transport_values:
+            return False
+        if runtime_identity["source"] not in schema.runtime_source_values:
+            return False
 
     if not all(key in artifact for key in ARTIFACT_KEYS):
         return False

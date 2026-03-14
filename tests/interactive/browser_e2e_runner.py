@@ -5,6 +5,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from tests.interactive.real_session_parity_fixture import build_real_session_parity_fixture
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 START_PUBLISHED_SCRIPT = REPO_ROOT / "scripts" / "start_published.sh"
@@ -62,14 +64,25 @@ def run_interactive_browser_e2e(
     *,
     base_url: str,
     ensure_stack: bool = True,
+    grep: str | None = None,
 ) -> InteractiveBrowserE2EResult:
+    parity_fixture = build_real_session_parity_fixture()
+
     if ensure_stack:
         ensure_published_stack()
 
     env = os.environ.copy()
     env["NEXUS_PUBLIC_URL"] = base_url
+    env["NEXUS_INTERACTIVE_PARITY_ARTIFACT_ID"] = parity_fixture.artifact_id
+    env["NEXUS_INTERACTIVE_PARITY_ARTIFACT_PATH"] = str(parity_fixture.artifact_path)
+    env["NEXUS_INTERACTIVE_PARITY_SESSION_ID"] = parity_fixture.session_id
+    env["NEXUS_INTERACTIVE_PARITY_PROMPT"] = parity_fixture.browser_prompt
+    env["NEXUS_INTERACTIVE_PARITY_EXPECTED_REPLY"] = parity_fixture.expected_browser_reply
+    command = list(PLAYWRIGHT_COMMAND)
+    if grep:
+        command.extend(["--grep", grep])
     completed = _run_command(
-        PLAYWRIGHT_COMMAND,
+        command,
         cwd=FRONTEND_DIR,
         env=env,
         timeout_seconds=DEFAULT_TIMEOUT_SECONDS,

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import AuthPanel from '@/components/AuthPanel';
@@ -344,6 +345,7 @@ interface Props {
 }
 
 export default function SessionDetailClient({ harness, artifactId }: Props) {
+  const router = useRouter();
   const decodedHarness = decodeURIComponent(harness);
   const decodedArtifactId = decodeURIComponent(artifactId);
   const [detail, setDetail] = useState<SessionArtifactResponse | null>(null);
@@ -368,6 +370,8 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
   const [askSubmitting, setAskSubmitting] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
   const [askResult, setAskResult] = useState<SessionAskResponse | null>(null);
+  const [resumeSubmitting, setResumeSubmitting] = useState(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
   const telegramWidgetRef = useRef<HTMLDivElement | null>(null);
 
   const loadDetail = useCallback(async () => {
@@ -418,6 +422,7 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
     setAskQuestion(DEFAULT_ASK_QUESTION);
     setAskError(null);
     setAskResult(null);
+    setResumeError(null);
   }, [decodedArtifactId, decodedHarness]);
 
   useEffect(() => {
@@ -563,6 +568,31 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
       setPassword('');
       setAuthError(null);
       setAuthRevision((value) => value + 1);
+    }
+  };
+
+  const handleResumeSession = async () => {
+    if (!capabilities.can_resume) {
+      return;
+    }
+
+    setResumeSubmitting(true);
+    setResumeError(null);
+
+    try {
+      const result = await api.resumeSessionArtifact(decodedHarness, decodedArtifactId);
+      const targetHref = result.interactive_href || interactiveCapability.href;
+
+      if (!targetHref) {
+        setResumeError('Resume started, but the interactive route link is missing.');
+        return;
+      }
+
+      router.push(targetHref);
+    } catch (resumeActionError) {
+      setResumeError(getApiErrorMessage(resumeActionError, 'Не удалось запустить resume для этой сессии.'));
+    } finally {
+      setResumeSubmitting(false);
     }
   };
 
@@ -1712,14 +1742,33 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     <div className="font-semibold">{resumeCapability.label}</div>
                     <div className="mt-1 text-nexus-600">{resumeCapability.detail}</div>
                   </div>
-                  {interactiveCapability.available && interactiveCapability.href ? (
+                  {capabilities.can_resume ? (
+                    <button
+                      data-testid="session-detail-resume-cta"
+                      type="button"
+                      onClick={handleResumeSession}
+                      disabled={resumeSubmitting}
+                      className="mt-3 inline-flex rounded-full bg-nexus-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-nexus-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                    >
+                      {resumeSubmitting ? 'Starting resume…' : 'Resume session'}
+                    </button>
+                  ) : null}
+                  {interactiveCapability.href ? (
                     <Link
                       href={interactiveCapability.href}
                       data-testid="session-detail-interactive-cta"
                       className="mt-3 inline-flex rounded-full border border-[#c7d6e5] bg-white px-4 py-2 text-sm font-semibold text-nexus-800 transition hover:border-[#94b0ca] hover:text-nexus-900"
                     >
-                      Open Interactive Route
+                      {interactiveCapability.available ? 'Open Interactive Route' : 'Inspect Interactive Route'}
                     </Link>
+                  ) : null}
+                  {resumeError ? (
+                    <div
+                      data-testid="session-detail-resume-error"
+                      className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-700"
+                    >
+                      {resumeError}
+                    </div>
                   ) : null}
                 </article>
               </div>

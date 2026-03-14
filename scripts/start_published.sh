@@ -15,7 +15,7 @@ if [ -n "$CALLER_PLAYWRIGHT_CHECK_ENABLED" ]; then
     NEXUS_PLAYWRIGHT_CHECK_ENABLED="$CALLER_PLAYWRIGHT_CHECK_ENABLED"
 fi
 BACKEND_PORT=${NEXUS_BACKEND_PORT}
-PYTHON_BIN=${PYTHON_BIN:-/usr/bin/python3}
+PYTHON_BIN=${PYTHON_BIN:-$(command -v python3 || echo /usr/bin/python3)}
 FRONTEND_STANDALONE_SERVER="$PROJECT_ROOT/frontend/.next/standalone/server.js"
 CADDY_LOG_FILE=/tmp/nexus-caddy.log
 

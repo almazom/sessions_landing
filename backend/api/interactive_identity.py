@@ -6,6 +6,12 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+from .interactive_store import (
+    find_operational_store_record,
+    load_operational_store_snapshot,
+    resolve_operational_store_path,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_FIXTURE_PATH = REPO_ROOT / "tests" / "fixtures" / "interactive" / "codex" / "runtime_identity.json"
@@ -142,7 +148,42 @@ def resolve_runtime_identity_from_artifact_route(
     artifact_session_id: str | None = None,
     fixture_path: Path | None = None,
     schema_path: Path | None = None,
+    operational_store_path: Path | None = None,
 ) -> Dict[str, Any]:
+    if operational_store_path is not False:
+        try:
+            operational_snapshot = load_operational_store_snapshot(
+                resolve_operational_store_path(operational_store_path)
+            )
+        except (FileNotFoundError, ValueError):
+            operational_snapshot = None
+
+        if operational_snapshot is not None:
+            operational_record = find_operational_store_record(
+                operational_snapshot,
+                harness=harness,
+                route_id=artifact_route_id,
+            )
+            if operational_record is not None:
+                runtime = operational_record.get("runtime_identity") or {}
+                mapping = {
+                    "artifact": {
+                        "harness": harness,
+                        "route_id": artifact_route_id,
+                        "session_id": str(runtime.get("session_id") or ""),
+                        "source_file": "operational-store",
+                    },
+                    "runtime": runtime,
+                }
+                if artifact_session_id is None:
+                    return mapping
+                return evaluate_runtime_identity_mapping(
+                    mapping,
+                    harness=harness,
+                    artifact_route_id=artifact_route_id,
+                    artifact_session_id=artifact_session_id,
+                )
+
     schema_payload = load_runtime_identity_schema(schema_path)
     fixture_payload = load_runtime_identity_fixture(fixture_path)
     validate_runtime_identity_fixture(fixture_payload, schema_payload=schema_payload)

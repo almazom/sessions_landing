@@ -60,7 +60,7 @@ class Task034BackendInteractiveRouteLoaderTests(unittest.TestCase):
         self.assertEqual(payload["interactive_session"]["transport"], "codex_app_server")
         self.assertEqual(payload["runtime_identity"]["thread_id"], "thread-fixture-codex-001")
 
-    def test_red_rejects_interactive_route_when_resume_is_disabled(self) -> None:
+    def test_red_returns_blocked_interactive_route_when_resume_is_disabled(self) -> None:
         app = self._app()
 
         with patch(
@@ -75,8 +75,12 @@ class Task034BackendInteractiveRouteLoaderTests(unittest.TestCase):
                     "/api/session-artifacts/codex/rollout-interactive-fixture.jsonl/interactive"
                 )
 
-        self.assertEqual(response.status_code, 409)
-        self.assertIn("disabled", response.json()["detail"])
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["interactive_session"]["available"])
+        self.assertEqual(payload["interactive_session"]["href"], "/sessions/codex/rollout-interactive-fixture.jsonl/interactive")
+        self.assertEqual(payload["runtime_identity"]["thread_id"], "thread-fixture-codex-001")
+        self.assertIn("disabled", payload["interactive_session"]["detail"])
 
 
 if __name__ == "__main__":

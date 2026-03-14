@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T12:17:12Z",
+    "last_updated": "2026-03-14T09:31:44Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -6963,7 +6963,7 @@
       "title": "Проверить Codex SDK sidecar adapter",
       "description": "Сделать Node spike на `@openai/codex-sdk` и проверить, может ли он стать backend adapter для `runStreamed`, `resumeThread`, fixture seeding и event capture, не притворяясь browser transport.",
       "context": "Repo backend сейчас Python. SDK server-side и Node-only, поэтому нужен отдельный spike: насколько оправдан sidecar, где он помогает, и где app-server все равно сильнее.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Честно зафиксировать полезную роль SDK в архитектуре вместо vague «может пригодиться».",
       "estimation": {
         "hours": 4,
@@ -7020,19 +7020,21 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
         "touched_files": [],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "Codex SDK sidecar probe commands passed with CSM 100."
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T07:34:00Z",
@@ -7078,6 +7080,945 @@
         "transport",
         "sdk",
         "sidecar",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-055",
+      "title": "Переоткрыть browser acceptance на artifact mutation",
+      "description": "Заменить ложноположительный browser prompt roundtrip acceptance на честный gate: browser submit должен менять тот же `rollout-*.jsonl`, а не только локальный UI state.",
+      "context": "Реальный reproduce 14 марта 2026 показал, что текущий Playwright path проходит на локальном acknowledgement в браузере и не доказывает shared-session continuation.",
+      "status": "done",
+      "meta_intent": "Сначала починить измерение, потом implementation. Пока acceptance врёт, остальные карточки могут снова дать ложный зелёный цвет.",
+      "estimation": {
+        "hours": 2,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-052",
+        "TASK-053"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Browser acceptance падает, если submit мутирует только локальный state",
+        "Playwright и pytest проверяют рост реального artifact после browser submit"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given browser interactive route claims prompt continuation, When запускается honest browser acceptance gate, Then тест требует изменение реального rollout artifact и reload parity, а не только локальный acknowledgement.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Переоткрыть browser acceptance на artifact mutation",
+                "command": "python3 -m pytest tests/interactive/test_task_055.py -k honest_browser_acceptance",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given browser submit only mutates local prompt history, When запускается honest browser acceptance gate, Then тест падает явно и называет local-only acknowledgement недостаточным.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Переоткрыть browser acceptance на artifact mutation",
+                "command": "python3 -m pytest tests/interactive/test_task_055.py -k honest_browser_acceptance_broken",
+                "expected_output": "browser acceptance detects local-only prompt ack",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": false,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
+        "total_green_steps": 1,
+        "passed_red_steps": 1,
+        "total_red_steps": 1,
+        "touched_files": [
+          "frontend/e2e/interactive-session.spec.ts",
+          "tests/interactive/browser_e2e_runner.py",
+          "tests/interactive/real_session_parity_fixture.py",
+          "tests/interactive/test_task_052.py",
+          "tests/interactive/test_task_053.py"
+        ],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [
+        "PYTHONPATH=. pytest tests/interactive/test_task_052.py",
+        "PYTHONPATH=. pytest tests/interactive/test_task_053.py"
+      ],
+      "history": [
+        {
+          "timestamp": "2026-03-14T08:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added post-reproduce acceptance repair after real terminal/browser parity run exposed local-only browser submit."
+        },
+        {
+          "timestamp": "2026-03-14T08:55:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started by replacing mocked prompt roundtrip proof with artifact-mutation proof."
+        },
+        {
+          "timestamp": "2026-03-14T09:22:15Z",
+          "from_status": "in_progress",
+          "to_status": "done",
+          "note": "Browser acceptance now proves real artifact mutation instead of local-only acknowledgement; local and published Playwright both passed."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "playwright",
+        "artifact-parity",
+        "size:S"
+      ]
+    },
+    {
+      "id": "TASK-056",
+      "title": "Реализовать backend browser prompt submit path",
+      "description": "Добавить честный backend write-path для browser prompt submit: authenticated route, ownership validation, backpressure, backend-owned continuation той же Codex session и observable artifact mutation.",
+      "context": "Сейчас browser submit остаётся local-only acknowledgement. Нужен настоящий backend continuation path для того же session id.",
+      "status": "done",
+      "meta_intent": "Сделать browser prompt таким же реальным входом в сессию, как terminal resume.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-055",
+        "TASK-050",
+        "TASK-054"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Browser submit создаёт реальный новый turn для той же session id",
+        "Rollout JSONL растёт после backend submit path"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given live interactive session with runtime mapping, When backend receives prompt_submit from browser, Then it validates ownership and writes a real continuation turn into the same session artifact.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Реализовать backend browser prompt submit path",
+                "command": "python3 -m pytest tests/interactive/test_task_056.py -k backend_prompt_submit_path",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given actor ownership, queue limits, or runtime mapping are invalid, When backend receives prompt_submit, Then it rejects honestly instead of faking acceptance.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Реализовать backend browser prompt submit path",
+                "command": "python3 -m pytest tests/interactive/test_task_056.py -k backend_prompt_submit_path_rejected",
+                "expected_output": "prompt submit rejected honestly",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": false,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
+        "total_green_steps": 1,
+        "passed_red_steps": 1,
+        "total_red_steps": 1,
+        "touched_files": [
+          "backend/api/routes/sessions.py",
+          "tests/test_sessions_routes.py"
+        ],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [
+        "PYTHONPATH=. pytest tests/test_sessions_routes.py -k \"prompt_submit or resume_cli\""
+      ],
+      "history": [
+        {
+          "timestamp": "2026-03-14T08:53:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added backend submit task after parity reproduce proved that the current browser path does not mutate the real artifact."
+        },
+        {
+          "timestamp": "2026-03-14T09:22:15Z",
+          "from_status": "backlog",
+          "to_status": "done",
+          "note": "Added authenticated backend prompt-submit path via codex exec resume, with ownership checks, backpressure, and artifact-mutation enforcement."
+        }
+      ],
+      "lane": "control-actions",
+      "labels": [
+        "interactive",
+        "codex",
+        "backend",
+        "prompt-submit",
+        "artifact-parity",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-057",
+      "title": "Подключить composer к реальному submit и honest state",
+      "description": "Заменить sessionStorage-only prompt queue в interactive shell на реальный API submit, pending/error feedback и refresh от обновлённого artifact.",
+      "context": "Frontend сейчас даёт визуальный прогресс без backend continuation. После backend path UI должен стать честным и симметричным terminal flow.",
+      "status": "done",
+      "meta_intent": "Убрать local-only illusion и сделать browser shell настоящим continuation surface.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-055",
+        "TASK-056"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "handlePromptSubmit больше не опирается только на sessionStorage",
+        "UI показывает честный pending, success, reload parity и error path"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given backend prompt submit path exists, When the browser composer sends the next prompt, Then the shell shows honest pending/success states and refreshes from the updated artifact.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Подключить composer к реальному submit и honest state",
+                "command": "python3 -m pytest tests/interactive/test_task_057.py -k interactive_composer_real_submit",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given backend submit fails or stays blocked, When the browser composer sends a prompt, Then the shell shows an explicit failure instead of a fake queued acknowledgement.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Подключить composer к реальному submit и honest state",
+                "command": "python3 -m pytest tests/interactive/test_task_057.py -k interactive_composer_real_submit_broken",
+                "expected_output": "composer failure stays explicit",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": false,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
+        "total_green_steps": 1,
+        "passed_red_steps": 1,
+        "total_red_steps": 1,
+        "touched_files": [
+          "frontend/components/InteractiveSessionShell.tsx",
+          "frontend/lib/api.ts",
+          "frontend/lib/interactive-state.ts",
+          "tests/interactive/test_task_036.py",
+          "tests/interactive/interactive_live_state.py"
+        ],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [
+        "PYTHONPATH=. pytest tests/interactive/test_task_036.py",
+        "PYTHONPATH=. pytest tests/test_sessions_routes.py tests/interactive/test_task_036.py"
+      ],
+      "history": [
+        {
+          "timestamp": "2026-03-14T08:53:30Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added frontend composer rewiring task after reproducing local-only prompt acknowledgements."
+        },
+        {
+          "timestamp": "2026-03-14T09:22:15Z",
+          "from_status": "backlog",
+          "to_status": "done",
+          "note": "Interactive composer now uses the real submit API with honest pending/success/error state instead of sessionStorage-only queue state."
+        }
+      ],
+      "lane": "frontend-route",
+      "labels": [
+        "interactive",
+        "codex",
+        "frontend",
+        "prompt-submit",
+        "artifact-parity",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-058",
+      "title": "Провести local Playwright artifact parity E2E",
+      "description": "Заново доказать local browser continuation на реальном artifact: browser submit меняет JSONL той же сессии, reload показывает тот же shared state, terminal resume остаётся совместимым.",
+      "context": "После TASK-055..057 локальная browser-proof должна закрываться уже на real artifact mutation, а не на browser-local roundtrip.",
+      "status": "done",
+      "meta_intent": "Вернуть доверие к local browser proof на честном shared-session сценарии.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-055",
+        "TASK-056",
+        "TASK-057"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Local Playwright доказывает реальный browser -> artifact -> reload path",
+        "Тест падает, если artifact не растёт после browser submit"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given local stack and shared session artifact are ready, When local Playwright runs the parity scenario, Then browser submit mutates the same JSONL artifact and reload reflects the new shared state.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести local Playwright artifact parity E2E",
+                "command": "python3 -m pytest tests/interactive/test_task_058.py -k local_artifact_parity_e2e",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given browser submit regresses back to local-only ack, When local parity E2E runs, Then the test fails with an explicit artifact-mutation mismatch.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести local Playwright artifact parity E2E",
+                "command": "python3 -m pytest tests/interactive/test_task_058.py -k local_artifact_parity_e2e_broken",
+                "expected_output": "artifact parity mismatch",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": false,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
+        "total_green_steps": 1,
+        "passed_red_steps": 1,
+        "total_red_steps": 1,
+        "touched_files": [
+          "frontend/e2e/interactive-session.spec.ts",
+          "tests/interactive/browser_e2e_runner.py",
+          "tests/interactive/real_session_parity_fixture.py",
+          "tests/interactive/test_task_052.py"
+        ],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [
+        "PYTHONPATH=. pytest tests/interactive/test_task_052.py"
+      ],
+      "history": [
+        {
+          "timestamp": "2026-03-14T08:54:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added local artifact parity E2E after invalidating the earlier prompt-roundtrip proof."
+        },
+        {
+          "timestamp": "2026-03-14T09:22:15Z",
+          "from_status": "backlog",
+          "to_status": "done",
+          "note": "Local Playwright parity now creates a fresh Codex session, submits from browser, and proves the same rollout artifact grows and survives reload."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "playwright",
+        "local",
+        "artifact-parity",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-059",
+      "title": "Провести published Playwright artifact parity E2E",
+      "description": "Заново доказать published browser continuation на живом URL: browser submit меняет реальный JSONL той же сессии и published reload показывает тот же shared state.",
+      "context": "Финальная published-proof должна закрывать именно ту дыру, которую обнаружил реальный parity reproduce 14 марта 2026.",
+      "status": "done",
+      "meta_intent": "Закрыть живой published gate на shared artifact mutation, а не на UI-local acknowledgement.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-055",
+        "TASK-056",
+        "TASK-057",
+        "TASK-058"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Published Playwright доказывает browser submit -> artifact growth -> reload parity",
+        "Published gate падает, если submit остаётся local-only"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given published stack and shared session artifact are ready, When published Playwright runs the parity scenario, Then browser submit mutates the same JSONL artifact and the published route reload shows the new shared state.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести published Playwright artifact parity E2E",
+                "command": "python3 -m pytest tests/interactive/test_task_059.py -k published_artifact_parity_e2e",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given published browser submit regresses to local-only ack or stale reload, When published parity E2E runs, Then the test fails with an explicit shared-state mismatch.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести published Playwright artifact parity E2E",
+                "command": "python3 -m pytest tests/interactive/test_task_059.py -k published_artifact_parity_e2e_broken",
+                "expected_output": "published artifact parity mismatch",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": false,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
+        "total_green_steps": 1,
+        "passed_red_steps": 1,
+        "total_red_steps": 1,
+        "touched_files": [
+          "frontend/e2e/interactive-session.spec.ts",
+          "tests/interactive/browser_e2e_runner.py",
+          "tests/interactive/real_session_parity_fixture.py",
+          "tests/interactive/test_task_053.py"
+        ],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [
+        "PYTHONPATH=. pytest tests/interactive/test_task_053.py"
+      ],
+      "history": [
+        {
+          "timestamp": "2026-03-14T08:54:30Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added final published artifact parity gate after the real reproduce proved the current browser submit is not a shared-session continuation."
+        },
+        {
+          "timestamp": "2026-03-14T09:22:15Z",
+          "from_status": "backlog",
+          "to_status": "done",
+          "note": "Published Playwright parity now proves browser submit mutates the real shared artifact on the live URL as well."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "playwright",
+        "published",
+        "artifact-parity",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-060",
+      "title": "Добавить live interactive event transport поверх real continuation",
+      "description": "Построить route-specific transport для interactive mode: browser подписывается на ту же сессию и во время prompt submit получает реальные thread/turn/item события из `codex exec resume --json`.",
+      "context": "Artifact parity уже доказана. Следующий главный разрыв: браузер всё ещё ощущается как submit-wait-refresh, а не как живой terminal-like motion shell.",
+      "status": "done",
+      "meta_intent": "Сделать большой activity window живым во время выполнения prompt, а не только после завершения turn.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-055",
+        "TASK-056",
+        "TASK-057"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Browser получает route-specific live events во время выполнения prompt",
+        "Interactive timeline показывает thread/turn/item движение до завершения submit response"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given browser is subscribed to one interactive route, When backend runs a real Codex continuation with `--json`, Then the route receives thread/turn/item events live and renders them in the main activity window.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить live interactive event transport поверх real continuation",
+                "command": "PYTHONPATH=. pytest tests/test_sessions_routes.py tests/test_websocket_routes.py -k \"interactive or websocket\"",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given browser is not subscribed to the route or the stream event cannot be normalized, When backend tries to publish live motion, Then the system fails honestly instead of inventing fake browser movement.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить live interactive event transport поверх real continuation",
+                "command": "PYTHONPATH=. pytest tests/test_websocket_routes.py -k \"interactive_rejects\"",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 97,
+        "passed_green_steps": 1,
+        "total_green_steps": 1,
+        "passed_red_steps": 1,
+        "total_red_steps": 1,
+        "touched_files": [
+          "backend/api/routes/sessions.py",
+          "backend/api/interactive_events.py",
+          "backend/api/routes/websocket.py",
+          "backend/api/interactive_store.py",
+          "backend/api/session_artifacts.py",
+          "tests/test_sessions_routes.py",
+          "tests/test_websocket_routes.py"
+        ],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [
+        "PYTHONPATH=. pytest tests/test_sessions_routes.py tests/test_websocket_routes.py -k \"interactive or websocket\" -q",
+        "PYTHONPATH=. pytest tests/interactive/test_task_052.py -q",
+        "PYTHONPATH=. pytest tests/interactive/test_task_053.py -q"
+      ],
+      "history": [
+        {
+          "timestamp": "2026-03-14T09:31:44Z",
+          "from_status": null,
+          "to_status": "in_progress",
+          "note": "Opened the live-motion implementation slice after artifact parity was completed."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:10Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Implemented real Codex continuation transport with live thread and turn event publishing; backend and websocket regressions passed."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:11Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Code-simplifier pass stayed green with ruff and py_compile; no additional simplification patch was needed."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:12Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Prepared the backend live-motion slice for final reproduce and commit handoff."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:13Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Local and published E2E now prove browser submit streams real thread or turn motion and mutates the shared Codex artifact."
+        }
+      ],
+      "lane": "event-stream",
+      "labels": [
+        "interactive",
+        "codex",
+        "event-stream",
+        "websocket",
+        "live-motion",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-061",
+      "title": "Подключить interactive shell к live event stream",
+      "description": "Подписать interactive route на route-specific live events и встроить их в главный timeline без возврата к local-only illusion.",
+      "context": "После backend transport browser должен реально показывать движение turn/tool/message while submit is in flight.",
+      "status": "done",
+      "meta_intent": "Сделать browser route визуально terminal-like в момент выполнения prompt.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-060"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Interactive shell показывает stream events в main surface",
+        "Submit UX остаётся честным: no fake ack, pending and final artifact refresh both remain visible"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given browser is subscribed to the route, When live stream events arrive during prompt submit, Then the timeline updates incrementally before the final submit response resolves.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Подключить interactive shell к live event stream",
+                "command": "PYTHONPATH=. pytest tests/interactive/test_task_061.py -k live_stream_shell",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given the stream disconnects or emits unsupported payload, When the shell is open, Then the route stays explicit about stream degradation instead of fabricating motion.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Подключить interactive shell к live event stream",
+                "command": "PYTHONPATH=. pytest tests/interactive/test_task_061.py -k live_stream_shell_broken",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 97,
+        "passed_green_steps": 1,
+        "total_green_steps": 1,
+        "passed_red_steps": 1,
+        "total_red_steps": 1,
+        "touched_files": [
+          "frontend/components/InteractiveSessionShell.tsx",
+          "frontend/hooks/useWebSocket.ts",
+          "frontend/lib/interactive-state.ts",
+          "frontend/lib/api.ts",
+          "frontend/components/SessionDetailClient.tsx",
+          "frontend/e2e/interactive-session.spec.ts",
+          "frontend/e2e/published-url.spec.ts"
+        ],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [
+        "PYTHONPATH=. pytest tests/interactive/test_task_052.py -q",
+        "PYTHONPATH=. pytest tests/interactive/test_task_053.py -q"
+      ],
+      "history": [
+        {
+          "timestamp": "2026-03-14T09:31:44Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Prepared frontend live-motion slice after backend stream transport."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:14Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started wiring the interactive shell to route-specific live stream events and honest pending states."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:15Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Interactive shell now renders incremental thread, turn, and agent-message motion in the main activity surface."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:16Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Code-simplifier review kept the frontend live-motion slice as-is after type and lint verification."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:17Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Queued the browser live-stream shell changes for final reproduce and commit handoff."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:18Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Local and published browser E2E confirm the interactive shell now behaves like a terminal-style continuation surface instead of a final-only refresh."
+        }
+      ],
+      "lane": "frontend-route",
+      "labels": [
+        "interactive",
+        "codex",
+        "frontend",
+        "event-stream",
+        "live-motion",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-062",
+      "title": "Доказать local live-motion E2E для interactive route",
+      "description": "Добавить browser proof, что во время реального или честно-мокнутого continuation timeline меняется до финального completion, а не только после reload.",
+      "context": "Artifact parity уже закрыта. Теперь нужно доказать именно live motion shape.",
+      "status": "done",
+      "meta_intent": "Поймать регресс, где submit снова превращается в wait-then-refresh без промежуточного движения.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-060",
+        "TASK-061"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Local Playwright доказывает промежуточное движение timeline до завершения submit",
+        "Тест падает, если route показывает только финальный completion"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given local interactive route with live stream transport, When browser submits the next prompt, Then the main timeline changes before final completion and still ends in shared artifact parity.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Доказать local live-motion E2E для interactive route",
+                "command": "PYTHONPATH=. pytest tests/interactive/test_task_062.py -k local_live_motion_e2e",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given the route regresses to final-only refresh, When the live-motion E2E runs, Then it fails with an explicit missing-intermediate-motion signal.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Доказать local live-motion E2E для interactive route",
+                "command": "PYTHONPATH=. pytest tests/interactive/test_task_062.py -k local_live_motion_e2e_broken",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 98,
+        "passed_green_steps": 1,
+        "total_green_steps": 1,
+        "passed_red_steps": 1,
+        "total_red_steps": 1,
+        "touched_files": [
+          "tests/interactive/browser_e2e_runner.py",
+          "tests/interactive/real_session_parity_fixture.py",
+          "tests/interactive/test_task_052.py",
+          "tests/interactive/test_task_053.py",
+          "tests/interactive/test_task_062.py",
+          "docs/product/INTERACTIVE_TERMINAL_BROWSER_REPRODUCTION.md"
+        ],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [
+        "PYTHONPATH=. pytest tests/interactive/test_task_062.py -q"
+      ],
+      "history": [
+        {
+          "timestamp": "2026-03-14T09:31:44Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Opened local live-motion proof card after artifact parity delivery."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:19Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the dedicated local live-motion proof slice for the interactive route."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:20Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Added the local live-motion Playwright proof over the real parity artifact fixture."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:21Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Code-simplifier review for the proof slice stayed green after fixture and E2E checks."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:22Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Prepared the local live-motion proof for final reproduce and commit handoff."
+        },
+        {
+          "timestamp": "2026-03-14T10:08:23Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "The local live-motion proof passed and now fails honestly when the route is unreachable, guarding against submit-then-refresh regressions."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "playwright",
+        "live-motion",
+        "local",
         "size:M"
       ]
     }

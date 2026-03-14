@@ -19,7 +19,7 @@ class Task037ReconnectBusyErrorUiStateTests(unittest.TestCase):
                 "Reconnecting to runtime",
                 "Session is busy",
                 "Degraded snapshot",
-                "runtime_identity.source === 'recovered'",
+                "runtime_identity?.source === 'recovered'",
                 "!payload.replay.history_complete",
             ],
         )

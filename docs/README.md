@@ -14,6 +14,8 @@ These files stay in the repository root because they are part of the main bootst
 ## Product Docs
 
 - `product/HIGH_LEVEL_EXPECTATIONS.md` -> what good product outcomes and UX behavior should look like
+- `product/HIGH_LEVEL_EXPECTATIONS_RELATED_INTERACTIVE_MODE.md` -> terminal-like browser continuation expectations for the interactive mode
+- `product/INTERACTIVE_TERMINAL_BROWSER_REPRODUCTION.md` -> step-by-step terminal-to-browser reproduction guide for one real Codex session
 - `roadmap/SESSION_DETAIL_NEXT_STEP.md` -> next practical step for session detail evolution
 
 ## Organizing Rule

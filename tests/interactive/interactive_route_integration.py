@@ -33,7 +33,8 @@ class InteractiveRouteIntegrationSnapshot:
     backend_path: str
     interactive_href: str
     transport: str
-    thread_id: str
+    thread_id: str | None
+    available: bool
     page_snapshot: InteractivePageShellSnapshot
     live_state_snapshot: InteractiveLiveStateSnapshot
     resilience_snapshot: InteractiveResilienceStatesSnapshot
@@ -102,14 +103,16 @@ def build_interactive_route_integration_snapshot(
         raise InteractiveRouteIntegrationBroken(
             f"interactive href does not align with page route suffix: {interactive_href}"
         )
-    if not payload["interactive_session"]["available"]:
-        raise InteractiveRouteIntegrationBroken("interactive route payload is not available")
-
     return InteractiveRouteIntegrationSnapshot(
         backend_path=backend_path,
         interactive_href=interactive_href,
         transport=str(payload["interactive_session"]["transport"]),
-        thread_id=str(payload["runtime_identity"]["thread_id"]),
+        thread_id=(
+            str(payload["runtime_identity"]["thread_id"])
+            if isinstance(payload.get("runtime_identity"), dict)
+            else None
+        ),
+        available=bool(payload["interactive_session"]["available"]),
         page_snapshot=page_snapshot,
         live_state_snapshot=live_state_snapshot,
         resilience_snapshot=resilience_snapshot,

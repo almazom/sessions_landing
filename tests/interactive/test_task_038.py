@@ -21,6 +21,7 @@ class Task038InteractiveRouteIntegrationTests(unittest.TestCase):
             snapshot.interactive_href,
             "/sessions/codex/rollout-interactive-fixture.jsonl/interactive",
         )
+        self.assertTrue(snapshot.available)
         self.assertEqual(snapshot.transport, "codex_app_server")
         self.assertEqual(snapshot.thread_id, "thread-fixture-codex-001")
         self.assertEqual(snapshot.page_snapshot.route_suffix, "/interactive")
@@ -40,16 +41,18 @@ class Task038InteractiveRouteIntegrationTests(unittest.TestCase):
                 "Reconnecting to runtime",
                 "Session is busy",
                 "Degraded snapshot",
-                "runtime_identity.source === 'recovered'",
+                "runtime_identity?.source === 'recovered'",
                 "!payload.replay.history_complete",
             ],
         )
 
-    def test_red_rejects_forbidden_interactive_route_input(self) -> None:
-        with self.assertRaises(InteractiveRouteIntegrationBroken) as error:
-            build_interactive_route_integration_snapshot(resume_supported=False)
+    def test_red_surfaces_blocked_interactive_route_input(self) -> None:
+        snapshot = build_interactive_route_integration_snapshot(resume_supported=False)
 
-        self.assertIn("returned 409", str(error.exception))
+        self.assertFalse(snapshot.available)
+        self.assertEqual(snapshot.interactive_href, "/sessions/codex/rollout-interactive-fixture.jsonl/interactive")
+        self.assertEqual(snapshot.transport, "codex_app_server")
+        self.assertEqual(snapshot.thread_id, "thread-fixture-codex-001")
 
     def test_red_missing_page_shell_breaks_bundle_honestly(self) -> None:
         missing_page = Path("/tmp/interactive-task-check/missing-interactive-page.tsx")

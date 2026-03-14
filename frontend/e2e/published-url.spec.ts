@@ -17,8 +17,10 @@ type MetricsPayload = {
 type SessionRecord = {
   session_id: string;
   agent_type: string;
+  agent_name?: string;
   status: string;
   source_file?: string;
+  [key: string]: unknown;
   route?: {
     harness: string;
     id: string;

@@ -39,6 +39,7 @@ export default defineConfig({
     baseURL,
     headless: true,
     ignoreHTTPSErrors: true,
+    browserName: 'chromium',
     actionTimeout: DEFAULT_EXPECT_TIMEOUT_MS,
     navigationTimeout,
     trace: 'retain-on-failure',

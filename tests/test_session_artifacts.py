@@ -12,6 +12,7 @@ from backend.api.session_artifacts import (
     list_session_git_commits,
     build_session_route,
 )
+from backend.api.interactive_identity import InteractiveIdentityNotFound
 from backend.parsers.base import SessionParser
 
 
@@ -244,6 +245,39 @@ class SessionArtifactsTests(unittest.TestCase):
         self.assertEqual(payload["session"]["state_model"]["labels"], ["live", "restorable"])
         self.assertEqual(payload["session"]["state_model"]["safety_mode"], "resume-allowed")
         self.assertTrue(payload["session"]["state_model"]["capabilities"]["can_resume"])
+
+    def test_build_session_detail_payload_derives_resume_support_for_real_codex_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "rollout-real.jsonl"
+            file_path.write_text(json.dumps({"type": "session_meta"}), encoding="utf-8")
+
+            with patch(
+                "backend.api.session_artifacts.build_session_git_commit_context",
+                return_value={"repository_root": None, "commits": []},
+            ), patch(
+                "backend.api.session_artifacts.resolve_runtime_identity_from_artifact_route",
+                side_effect=InteractiveIdentityNotFound("missing mapping"),
+            ):
+                payload = build_session_detail_payload(
+                    {
+                        "session_id": "019ce72f-7e29-7150-8777-1462772b40fc",
+                        "agent_type": "codex",
+                        "agent_name": "Codex",
+                        "cwd": "/home/pets/zoo/agents_sessions_dashboard",
+                        "timestamp_start": "2026-03-13T12:32:55+00:00",
+                        "timestamp_end": "2026-03-13T12:39:19+00:00",
+                        "status": "completed",
+                    },
+                    file_path,
+                )
+
+        self.assertTrue(payload["session"]["state_model"]["capabilities"]["can_resume"])
+        self.assertEqual(payload["session"]["state_model"]["safety_mode"], "resume-allowed")
+        self.assertEqual(payload["session"]["state_model"]["interactive_session"]["label"], "Interactive mode blocked")
+        self.assertIn(
+            "no runtime identity mapping",
+            payload["session"]["state_model"]["interactive_session"]["detail"],
+        )
 
     def test_build_session_detail_payload_treats_idle_active_session_as_archived_until_restore_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

@@ -20,6 +20,9 @@ EVENT_STATUS_BY_TYPE = {
     "item.started": "started",
     "item.updated": "updated",
     "item.completed": "completed",
+    "thread.started": "started",
+    "turn.started": "started",
+    "turn.completed": "completed",
 }
 
 
@@ -101,13 +104,49 @@ def _summary_for_item(item: Dict[str, Any]) -> str:
     )
 
 
-def normalize_thread_event(event: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_thread_event(event: Any) -> Dict[str, Any]:
+    if not isinstance(event, dict):
+        raise ValueError("interactive event normalization requires object payloads")
+
     event_type = str(event.get("type") or "")
-    item = event.get("item")
     if event_type not in EVENT_STATUS_BY_TYPE:
         raise ValueError(
             f"interactive event normalization does not support event type: {event_type}"
         )
+
+    if event_type == "thread.started":
+        thread_id = str(event.get("thread_id") or "")
+        return {
+            "event_id": thread_id or "thread-started",
+            "kind": "thread",
+            "status": "started",
+            "summary": "Thread started",
+            "payload": {"thread_id": thread_id},
+            "source_event_type": event_type,
+        }
+
+    if event_type == "turn.started":
+        return {
+            "event_id": "turn-started",
+            "kind": "turn",
+            "status": "started",
+            "summary": "Turn started",
+            "payload": {},
+            "source_event_type": event_type,
+        }
+
+    if event_type == "turn.completed":
+        usage = event.get("usage") or {}
+        return {
+            "event_id": "turn-completed",
+            "kind": "turn",
+            "status": "completed",
+            "summary": "Turn completed",
+            "payload": {"usage": usage},
+            "source_event_type": event_type,
+        }
+
+    item = event.get("item")
     if not isinstance(item, dict):
         raise ValueError("interactive event normalization requires event item payload")
 
