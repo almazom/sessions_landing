@@ -1,0 +1,4 @@
+interface:
+  display_name: "Consistency Codebase"
+  short_description: "Normalize markdown guidance for clarity and maintainability"
+  default_prompt: "Use $consistency-codebase to review or normalize repository instruction and workflow markdown files for structure, terminology, precedence, maintainability, and output contracts."

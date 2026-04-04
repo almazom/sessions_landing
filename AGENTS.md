@@ -271,15 +271,21 @@ Core rule:
 
 Default per-task flow:
 
+Preferred execution wrapper:
+
+- use `finalize-delivery` as the coordinator for the delivery half of every task
+- keep the SSOT state transitions explicit even when `finalize-delivery` orchestrates the child skills
+- inside that chain, use `reproduce-skill` after `auto-commit` as the default reproduce implementation
+
 1. Move the next eligible task to `in_progress`
 2. Implement the task
 3. Run the task-level terminal checks
 4. Move the task to `simplification_step`
-5. Run the `code-simplifier` skill
+5. Run the `code-simplifier` skill directly or through `finalize-delivery`
 6. Move the task to `auto_commit_step`
-7. Run the `auto-commit` skill
+7. Run the `auto-commit` skill directly or through `finalize-delivery`
 8. Move the task to `reproduce_step`
-9. Run the task's reproduce commands and required browser checks
+9. Run `reproduce-skill` and the task's reproduce commands and required browser checks
 10. Move the task to `done` only when the real confidence is `>= 95`
 
 Failure handling:
@@ -313,6 +319,13 @@ User loop:
 - on major milestones, use the globally available `t2me` CLI to package or relay milestone output
 - if the exact usage is unclear, inspect `t2me --help` first
 - keep milestone communication compact and operational
+
+Delivery chain rule:
+
+- treat `finalize-delivery` as the default per-task orchestrator once implementation for a card is ready for handoff
+- `finalize-delivery` must run the repo delivery chain in Trello order, not as a shortcut around SSOT state updates
+- the reproduce stage inside that chain should prefer `reproduce-skill`
+- do not mark a task `done` until the `finalize-delivery` chain has completed and the reproduce evidence is recorded in the JSON
 
 ## Verification
 
@@ -352,7 +365,8 @@ Rule:
 - rebuild and republish after major changes
 - do not assume the live stack has updated until it is restarted
 - before asking the user to test, run the Playwright check yourself first
-- when Playwright screenshots are part of user-facing review, send them through `t2me` unless the user explicitly opts out
+- when Playwright creates screenshots during verification or review, send each screenshot to the user through `t2me`
+- if the exact `t2me` file-send usage is unclear, inspect `t2me --help` first and then send the screenshot artifact instead of only mentioning it in chat
 
 Required flow:
 

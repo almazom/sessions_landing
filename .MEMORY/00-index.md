@@ -17,6 +17,7 @@ Isolated CLI cards:
 - `14-extract-intent-cli.md`
 - `15-published-stability-runbook.md`
 - `16-session-query-cli.md`
+- `17-agent-nexus-review-short-tips.md`
 
 Rule:
 - `.MEMORY` is the short operational memory layer.
