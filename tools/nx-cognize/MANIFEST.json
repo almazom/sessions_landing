@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "tools/nx-cognize/MANIFEST.json",
   "title": "nx-cognize Tool Manifest",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "identity": {
     "name": "nx-cognize",
     "description": "Run a cognitive summary operation over JSON or JSONL with provider fallback",
@@ -39,7 +39,7 @@
         "name": "--prompt-id",
         "type": "string",
         "default": "session-summary",
-        "description": "Prompt catalog entry, e.g. session-summary or intent-vector-ru"
+        "description": "Prompt catalog entry, e.g. session-summary, intent-vector-ru, or change-vector-ru"
       },
       {
         "name": "--state-file",
@@ -102,7 +102,8 @@
       "nx-cognize",
       "providers.json",
       "prompts/session-summary.yaml",
-      "prompts/intent-vector-ru.yaml"
+      "prompts/intent-vector-ru.yaml",
+      "prompts/change-vector-ru.yaml"
     ],
     "optional": [
       "provider-state.local.json"

@@ -103,6 +103,43 @@ class NxCognizeTests(unittest.TestCase):
             self.assertGreaterEqual(len(payload["summary"]["intent_steps_ru"]), 3)
             self.assertEqual(payload["summary"]["intent_bullets"], payload["summary"]["intent_steps_ru"])
 
+    def test_change_vector_ru_prompt_returns_change_steps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source_path = root / "change-events.jsonl"
+            state_path = root / "provider-state.json"
+            write_jsonl(
+                source_path,
+                [
+                    {"role": "user", "content": "changed paths 2"},
+                    {"role": "user", "content": "error lines 3"},
+                    {"role": "user", "content": "retry lines 2"},
+                    {"role": "user", "content": "auth lines 1"},
+                ],
+            )
+
+            completed = self.run_cli(
+                "--input",
+                str(source_path),
+                "--provider-chain",
+                "local",
+                "--prompt-id",
+                "change-vector-ru",
+                "--state-file",
+                str(state_path),
+                "--max-words-per-bullet",
+                "3",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+
+            self.assertEqual(payload["meta"]["prompt_id"], "change-vector-ru")
+            self.assertEqual(payload["meta"]["selected_provider"], "local")
+            self.assertTrue(payload["summary"]["summary"].startswith("За период"))
+            self.assertIn("новые ошибки", payload["summary"]["intent_steps_ru"])
+            self.assertIn("рост retry", payload["summary"]["intent_steps_ru"])
+            self.assertIn("ошибки авторизации", payload["summary"]["intent_steps_ru"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -363,6 +363,198 @@ class ExtractIntentTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn(str(tool_path), completed.stdout.strip())
 
+    def test_track_json_mode_creates_baseline_then_reports_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "state.json"
+            track_state_dir = root / "track-state"
+            track_path.write_text(
+                json.dumps({"status": "ready", "count": 1, "meta": {"updated_at": "t1"}}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            first = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+            first_payload = json.loads(first.stdout)
+            self.assertEqual(first_payload["change"]["summary"], "Базовая точка сохранена.")
+            self.assertEqual(first_payload["change"]["stats"]["status"], "baseline_created")
+            self.assertEqual(first_payload["change"]["steps"], [])
+
+            track_path.write_text(
+                json.dumps(
+                    {"status": "failed", "count": 4, "meta": {"updated_at": "t2"}, "errors": ["auth failed"]},
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            second = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+                "--ignore-path",
+                "meta.updated_at",
+            )
+            self.assertEqual(second.returncode, 0, second.stderr)
+            payload = json.loads(second.stdout)
+            self.assertEqual(payload["meta"]["summary_source"], "local_fallback")
+            self.assertEqual(payload["source"]["kind"], "json")
+            self.assertEqual(payload["change"]["stats"]["added_paths"], 1)
+            self.assertEqual(payload["change"]["stats"]["changed_paths"], 2)
+            self.assertIn("ошибки авторизации", payload["change"]["steps"])
+
+    def test_track_log_mode_ignores_noise_and_auto_advances_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "app.log"
+            track_state_dir = root / "track-state"
+            track_path.write_text("INFO boot\n", encoding="utf-8")
+
+            first = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+
+            with open(track_path, "a", encoding="utf-8") as handle:
+                handle.write("heartbeat ok\n")
+                handle.write("heartbeat ok\n")
+
+            second = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+                "--ignore-line",
+                "heartbeat",
+            )
+            self.assertEqual(second.returncode, 0, second.stderr)
+            second_payload = json.loads(second.stdout)
+            self.assertEqual(second_payload["meta"]["summary_source"], "deterministic")
+            self.assertEqual(second_payload["change"]["summary"], "Содержательных изменений нет.")
+            self.assertEqual(second_payload["change"]["stats"]["status"], "no_material_changes")
+            self.assertEqual(second_payload["change"]["stats"]["appended_lines"], 2)
+
+            third = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+                "--ignore-line",
+                "heartbeat",
+            )
+            self.assertEqual(third.returncode, 0, third.stderr)
+            third_payload = json.loads(third.stdout)
+            self.assertEqual(third_payload["change"]["stats"]["appended_lines"], 0)
+
+    def test_track_log_no_advance_keeps_previous_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "app.log"
+            track_state_dir = root / "track-state"
+            track_path.write_text("INFO boot\n", encoding="utf-8")
+
+            baseline = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+            )
+            self.assertEqual(baseline.returncode, 0, baseline.stderr)
+
+            with open(track_path, "a", encoding="utf-8") as handle:
+                handle.write("ERROR auth failed\n")
+
+            first_change = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+                "--no-advance",
+            )
+            self.assertEqual(first_change.returncode, 0, first_change.stderr)
+            first_payload = json.loads(first_change.stdout)
+            self.assertEqual(first_payload["change"]["stats"]["appended_lines"], 1)
+            self.assertIn("ошибки авторизации", first_payload["change"]["steps"])
+
+            second_change = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+            )
+            self.assertEqual(second_change.returncode, 0, second_change.stderr)
+            second_payload = json.loads(second_change.stdout)
+            self.assertEqual(second_payload["change"]["stats"]["appended_lines"], 1)
+
+    def test_reset_track_replaces_saved_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            track_path = root / "state.json"
+            track_state_dir = root / "track-state"
+            track_path.write_text(json.dumps({"status": "ready"}, ensure_ascii=False), encoding="utf-8")
+
+            first = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+
+            track_path.write_text(json.dumps({"status": "failed"}, ensure_ascii=False), encoding="utf-8")
+            reset = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+                "--reset-track",
+            )
+            self.assertEqual(reset.returncode, 0, reset.stderr)
+            reset_payload = json.loads(reset.stdout)
+            self.assertEqual(reset_payload["change"]["summary"], "Базовая точка обновлена.")
+            self.assertEqual(reset_payload["change"]["stats"]["status"], "baseline_reset")
+
+            after_reset = self.run_cli(
+                "--track",
+                str(track_path),
+                "--provider-chain",
+                "local",
+                "--track-state-dir",
+                str(track_state_dir),
+            )
+            self.assertEqual(after_reset.returncode, 0, after_reset.stderr)
+            after_reset_payload = json.loads(after_reset.stdout)
+            self.assertEqual(after_reset_payload["change"]["summary"], "Содержательных изменений нет.")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "intent-extract-request.schema.json",
   "title": "IntentExtractRequest",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "object",
   "required": [
     "source",
@@ -12,18 +12,23 @@
   "properties": {
     "source": {
       "type": "object",
-      "required": [
-        "format"
-      ],
       "oneOf": [
         {
           "required": [
-            "path"
+            "path",
+            "format"
           ]
         },
         {
           "required": [
-            "project"
+            "project",
+            "format"
+          ]
+        },
+        {
+          "required": [
+            "track_path",
+            "track_kind"
           ]
         }
       ],
@@ -33,6 +38,10 @@
           "minLength": 1
         },
         "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "track_path": {
           "type": "string",
           "minLength": 1
         },
@@ -61,6 +70,38 @@
             "json",
             "jsonl"
           ]
+        },
+        "track_kind": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "json",
+            "jsonl",
+            "log"
+          ]
+        },
+        "track_state_dir": {
+          "type": "string"
+        },
+        "reset_track": {
+          "type": "boolean"
+        },
+        "no_advance": {
+          "type": "boolean"
+        },
+        "ignore_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ignore_line_patterns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "max_steps": {
           "type": "integer",

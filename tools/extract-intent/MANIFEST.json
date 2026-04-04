@@ -2,18 +2,18 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "tools/extract-intent/MANIFEST.json",
   "title": "extract-intent Tool Manifest",
-  "version": "1.7.0",
+  "version": "1.9.0",
   "identity": {
     "name": "extract-intent",
-    "description": "Extract 3-7 easy-to-read Russian intent steps from one JSON or JSONL session file",
-    "stateless": true
+    "description": "Extract Russian intent steps from one session file or summarize tracked file changes",
+    "stateless": false
   },
   "contracts": {
-    "input": "intent-extract-request@1.2.0",
-    "output": "intent-extract-result@1.4.0"
+    "input": "intent-extract-request@1.3.0",
+    "output": "intent-extract-result@1.5.0"
   },
   "cli": {
-    "usage": "tools/extract-intent/extract-intent (--input <FILE> | --project <DIR>) [--pretty]",
+    "usage": "tools/extract-intent/extract-intent (--input <FILE> | --project <DIR> | --track <FILE>) [--pretty]",
     "flags": [
       {
         "name": "--input",
@@ -26,6 +26,11 @@
         "name": "--project",
         "type": "string",
         "description": "Project folder; resolve the latest matching session file before extraction"
+      },
+      {
+        "name": "--track",
+        "type": "string",
+        "description": "Track a JSON, JSONL, or log file against its saved baseline"
       },
       {
         "name": "--provider",
@@ -49,6 +54,39 @@
         "type": "string",
         "default": "auto",
         "description": "Source format: auto, json, jsonl"
+      },
+      {
+        "name": "--track-kind",
+        "type": "string",
+        "default": "auto",
+        "description": "Tracked file kind: auto, json, jsonl, log"
+      },
+      {
+        "name": "--track-state-dir",
+        "type": "string",
+        "description": "Override the directory used for persisted track baselines"
+      },
+      {
+        "name": "--reset-track",
+        "type": "boolean",
+        "default": false,
+        "description": "Replace the saved baseline for --track with the current file"
+      },
+      {
+        "name": "--ignore-path",
+        "type": "string",
+        "description": "Comma-separated JSON path prefixes to ignore in --track json mode"
+      },
+      {
+        "name": "--ignore-line",
+        "type": "string",
+        "description": "Comma-separated regex patterns to ignore in --track log/jsonl mode"
+      },
+      {
+        "name": "--no-advance",
+        "type": "boolean",
+        "default": false,
+        "description": "Do not move the saved baseline after reporting a tracked diff"
       },
       {
         "name": "--processing-provider",

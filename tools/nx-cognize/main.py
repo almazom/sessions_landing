@@ -20,12 +20,13 @@ import yaml
 
 
 TOOL_NAME = "nx-cognize"
-TOOL_VERSION = "0.2.0"
+TOOL_VERSION = "0.3.0"
 DEFAULT_FORMATS = {"json", "jsonl", "auto"}
 DEFAULT_PROMPT_ID = "session-summary"
 PROMPT_FILES = {
     "session-summary": "session-summary.yaml",
     "intent-vector-ru": "intent-vector-ru.yaml",
+    "change-vector-ru": "change-vector-ru.yaml",
 }
 MIN_BULLETS = 3
 MAX_BULLETS = 7
@@ -77,6 +78,25 @@ SUPPORT_INTENT_STEPS = {
     "уточнить memory слой",
     "проверить shell команды",
     "объяснить поиск latest",
+}
+CHANGE_SEMANTIC_RULES = [
+    (re.compile(r"(ротац|rotation|truncate|перезаписан|перезаписана|rewritten)", re.IGNORECASE), "лог перезаписан"),
+    (re.compile(r"(401|auth|unauthor|forbidden|access denied)", re.IGNORECASE), "ошибки авторизации"),
+    (re.compile(r"(timeout|timed out|deadline exceeded)", re.IGNORECASE), "новые таймауты"),
+    (re.compile(r"\bretry\b", re.IGNORECASE), "рост retry"),
+    (re.compile(r"(queue|очеред)", re.IGNORECASE), "очередь растет"),
+    (re.compile(r"(error|exception|fatal|traceback|failed|failure)", re.IGNORECASE), "новые ошибки"),
+    (re.compile(r"(warn|warning)", re.IGNORECASE), "новые предупреждения"),
+    (re.compile(r"(json changed paths|changed paths|изменено поле|changed field|изменено число)", re.IGNORECASE), "изменены поля"),
+    (re.compile(r"(added paths|добавлено поле|added field|добавлено строк|appended lines|new records)", re.IGNORECASE), "добавлены данные"),
+    (re.compile(r"(removed paths|удалено поле|removed field)", re.IGNORECASE), "убраны поля"),
+    (re.compile(r"(updated count|delta|counter|count|счетчик|счётчик)", re.IGNORECASE), "счетчики сместились"),
+]
+GENERIC_CHANGE_STEPS = {
+    "добавлены данные",
+    "изменены поля",
+    "убраны поля",
+    "счетчики сместились",
 }
 
 
@@ -460,8 +480,20 @@ def summarize_intent_step(text: str, max_words_per_bullet: int) -> str:
 
 
 def semantic_intent_step(text: str, max_words_per_bullet: int) -> str:
+    return apply_semantic_rules(text, SEMANTIC_INTENT_RULES, max_words_per_bullet)
+
+
+def semantic_change_step(text: str, max_words_per_bullet: int) -> str:
+    return apply_semantic_rules(text, CHANGE_SEMANTIC_RULES, max_words_per_bullet)
+
+
+def apply_semantic_rules(
+    text: str,
+    rules: Iterable[Tuple[re.Pattern[str], str]],
+    max_words_per_bullet: int,
+) -> str:
     normalized = " ".join(text.lower().split())
-    for pattern, replacement in SEMANTIC_INTENT_RULES:
+    for pattern, replacement in rules:
         if pattern.search(normalized):
             return replacement
     return summarize_intent_step(text, max_words_per_bullet)
@@ -487,9 +519,7 @@ def local_intent_steps(packet: Dict[str, Any], max_bullets: int, max_words_per_b
         semantic_intent_step(message, max_words_per_bullet)
         for message in sample_intent_messages(user_messages, max_bullets)
     ])
-    preferred_steps = [step for step in semantic_steps if step and step not in SUPPORT_INTENT_STEPS]
-    support_steps = [step for step in semantic_steps if step in SUPPORT_INTENT_STEPS]
-    cleaned_steps = preferred_steps + support_steps
+    cleaned_steps = prioritize_steps(semantic_steps, SUPPORT_INTENT_STEPS, require_non_empty=True)
 
     while len(cleaned_steps) < MIN_BULLETS:
         filler = " ".join(topic_list[:max_words_per_bullet]) or "понять ход этой сессии"
@@ -501,19 +531,73 @@ def local_intent_steps(packet: Dict[str, Any], max_bullets: int, max_words_per_b
     return cleaned_steps[:max_bullets]
 
 
-def build_intent_summary_ru(intent_steps: List[str]) -> str:
-    if not intent_steps:
-        return "Пользователь хочет понять, куда движется эта сессия."
+def local_change_steps(packet: Dict[str, Any], max_bullets: int, max_words_per_bullet: int) -> List[str]:
+    raw_messages = packet["user_messages"] or packet["snippets"]
+    semantic_steps = dedupe_texts([
+        semantic_change_step(message, max_words_per_bullet)
+        for message in sample_intent_messages(raw_messages, max_bullets * 2)
+    ])
+    ordered_steps = prioritize_steps(semantic_steps, GENERIC_CHANGE_STEPS)
 
+    while len(ordered_steps) < MIN_BULLETS:
+        filler = " ".join(topic_keywords(raw_messages, limit=max_words_per_bullet)[:max_words_per_bullet]) or "изменения файла"
+        if filler not in ordered_steps:
+            ordered_steps.append(filler)
+        else:
+            ordered_steps.append(f"изменение {len(ordered_steps) + 1}")
+
+    return ordered_steps[:max_bullets]
+
+
+def prioritize_steps(steps: Iterable[str], deferred_steps: set[str], require_non_empty: bool = False) -> List[str]:
+    preferred_steps: List[str] = []
+    fallback_steps: List[str] = []
+    for step in steps:
+        if require_non_empty and not step:
+            continue
+        if step in deferred_steps:
+            fallback_steps.append(step)
+        else:
+            preferred_steps.append(step)
+    return preferred_steps + fallback_steps
+
+
+def build_intent_summary_ru(intent_steps: List[str]) -> str:
     highlighted_steps = [step for step in intent_steps if step not in SUPPORT_INTENT_STEPS][:3]
     if not highlighted_steps:
         highlighted_steps = intent_steps[:3]
+    return build_three_step_summary(
+        highlighted_steps,
+        empty_summary="Пользователь хочет понять, куда движется эта сессия.",
+        single_prefix="Пользователь хочет",
+        multi_prefix="Пользователь хочет",
+    )
+
+
+def build_change_summary_ru(change_steps: List[str]) -> str:
+    return build_three_step_summary(
+        change_steps[:3],
+        empty_summary="За период содержательных изменений не появилось.",
+        single_prefix="За период файл сместился в сторону",
+        multi_prefix="За период файл сместился в сторону",
+    )
+
+
+def build_three_step_summary(
+    highlighted_steps: List[str],
+    *,
+    empty_summary: str,
+    single_prefix: str,
+    multi_prefix: str,
+) -> str:
+    if not highlighted_steps:
+        return empty_summary
     if len(highlighted_steps) == 1:
-        return f"Пользователь хочет {highlighted_steps[0]}."
+        return f"{single_prefix} {highlighted_steps[0]}."
     if len(highlighted_steps) == 2:
-        return f"Пользователь хочет {highlighted_steps[0]} и {highlighted_steps[1]}."
+        return f"{multi_prefix} {highlighted_steps[0]} и {highlighted_steps[1]}."
     return (
-        f"Пользователь хочет {highlighted_steps[0]}, "
+        f"{multi_prefix} {highlighted_steps[0]}, "
         f"{highlighted_steps[1]} и {highlighted_steps[2]}."
     )
 
@@ -527,7 +611,10 @@ def local_summary(
     first_message = packet["first_user_message"]
     last_message = packet["last_user_message"]
     user_messages = packet["user_messages"]
-    intent_steps = local_intent_steps(packet, max_bullets, max_words_per_bullet)
+    if prompt_id == "change-vector-ru":
+        intent_steps = local_change_steps(packet, max_bullets, max_words_per_bullet)
+    else:
+        intent_steps = local_intent_steps(packet, max_bullets, max_words_per_bullet)
     key_topics = topic_keywords(user_messages + packet["snippets"])
     title_candidates = user_messages[-3:] or [last_message, first_message]
     title_source = max(title_candidates, key=len, default="") or last_message or first_message or "JSONL cognitive session"
@@ -535,6 +622,9 @@ def local_summary(
     title = " ".join(title_words[:6]) or " ".join(key_topics[:4]) or "Вектор пользовательских намерений"
     if prompt_id == "intent-vector-ru":
         summary = build_intent_summary_ru(intent_steps)
+    elif prompt_id == "change-vector-ru":
+        title = " ".join(title_words[:6]) or " ".join(key_topics[:4]) or "Изменения файла"
+        summary = build_change_summary_ru(intent_steps)
     else:
         summary = (
             "This file centers on user-driven instructions extracted from the source log."
